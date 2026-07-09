@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Milky Rush — Tap & Earn Milk</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+  :root {
+    --bg:#0a0e1a; --bg2:#111827; --bg3:#1a2236;
+    --accent:#60c8f0; --accent2:#38a8e0;
+    --green:#22d3a0; --red:#f43f5e; --purple:#a78bfa;
+    --text:#f0f4ff; --muted:#6b7a99; --border:#1e2d45; --card:#141c2e;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Space Grotesk',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+  /* LOADING */
+  .loading-screen { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; }
+  .loading-logo { font-size:60px; margin-bottom:16px; animation:pulse 1.5s infinite; cursor:pointer; user-select:none; }
+  .loading-text { font-size:18px; font-weight:700; color:var(--accent); }
+  .loading-sub { font-size:13px; color:var(--muted); margin-top:6px; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+  .loading-bar { width:200px; height:4px; background:var(--border); border-radius:2px; margin-top:20px; overflow:hidden; }
+  .loading-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; animation:load 2s ease forwards; }
+  @keyframes load { from{width:0} to{width:100%} }
+
+  /* NAV */
+  .nav { position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:1px solid var(--border); display:flex; z-index:100; padding-bottom:env(safe-area-inset-bottom); }
+  .nav-btn { flex:1; padding:12px 4px 8px; display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; color:var(--muted); font-size:10px; font-family:inherit; transition:color 0.2s; }
+  .nav-btn.active { color:var(--accent); }
+  .nav-btn svg { width:22px; height:22px; }
+
+  /* PAGES */
+  .page { display:none; padding:16px 16px 90px; }
+  .page.active { display:block; }
+
+  /* HEADER */
+  .header { background:linear-gradient(135deg,#0f1f3d 0%,#1a2a4a 100%); border-radius:20px; padding:20px; margin-bottom:16px; border:1px solid var(--border); position:relative; overflow:hidden; }
+  .header::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:radial-gradient(circle,rgba(96,200,240,0.15) 0%,transparent 70%); border-radius:50%; }
+  .header-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .user-info { display:flex; align-items:center; gap:10px; }
+  .avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:var(--bg); flex-shrink:0; }
+  .user-name { font-size:15px; font-weight:700; }
+  .user-level { font-size:12px; color:var(--accent); }
+  .daily-badge { background:var(--accent); color:var(--bg); border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; border:none; font-family:inherit; animation:pulse 2s infinite; }
+  .balance-label { font-size:11px; color:var(--muted); margin-bottom:4px; letter-spacing:0.5px; }
+  .balance-amount { font-family:'Space Mono',monospace; font-size:34px; font-weight:700; color:var(--accent); letter-spacing:-1px; }
+  .stats-row { display:flex; gap:8px; margin-top:14px; }
+  .stat-pill { flex:1; background:rgba(255,255,255,0.05); border-radius:10px; padding:10px 6px; text-align:center; }
+  .stat-pill .v { font-size:16px; font-weight:700; color:var(--green); }
+  .stat-pill .l { font-size:10px; color:var(--muted); margin-top:2px; }
+
+  .level-row { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:16px; font-weight:600; }
+  .level-row span:first-child { color:var(--text); }
+  .level-bar-track { height:6px; background:rgba(255,255,255,0.08); border-radius:3px; margin-top:8px; overflow:hidden; }
+  .level-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:3px; transition:width 0.3s ease; }
+
+  .section-title { font-size:13px; color:var(--muted); font-weight:600; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
+  .tap-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px; text-align:center; margin-bottom:16px; }
+  .tap-btn { width:150px; height:150px; border-radius:50%; border:none; cursor:pointer; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:56px; background:radial-gradient(circle at 35% 35%, #a8d8f0, #38a8e0 50%, #1a6fa0); box-shadow:0 0 40px rgba(96,200,240,0.4); transition:transform 0.1s; position:relative; }
+  .tap-btn:active { transform:scale(0.92); }
+  .tap-label { font-size:13px; font-weight:800; color:var(--bg); margin-top:2px; letter-spacing:1px; }
+  .tap-stats { display:flex; justify-content:center; gap:30px; }
+  .tap-stat .v { font-size:20px; font-weight:700; color:var(--accent); }
+  .tap-stat .l { font-size:10px; color:var(--muted); }
+  .float-coin { position:fixed; font-size:18px; font-weight:800; color:var(--accent); pointer-events:none; animation:floatUp 1s ease-out forwards; z-index:999; }
+  @keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-80px) scale(1.3)} }
+
+  .earn-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:16px; }
+  .earn-row { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:13px; color:var(--muted); }
+  .earn-row span:first-child { font-size:18px; }
+
+  .wallet-card { background:linear-gradient(135deg,#1a1f3a,#0f172a); border:1px solid var(--border); border-radius:20px; padding:20px; margin-bottom:16px; }
+  .wallet-label { font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:0.5px; }
+  .wallet-amount { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; color:var(--accent); }
+  .wd-btn { width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--bg); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .tx-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .tx-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; background:rgba(96,200,240,0.15); }
+  .tx-info { flex:1; }
+  .tx-name { font-size:13px; font-weight:600; }
+  .tx-time { font-size:11px; color:var(--muted); }
+  .tx-amount { font-size:14px; font-weight:700; }
+  .tx-amount.plus { color:var(--green); }
+  .tx-amount.minus { color:var(--red); }
+  .tx-empty { text-align:center; padding:50px 20px; color:var(--muted); }
+  .tx-empty .icon { font-size:38px; margin-bottom:14px; display:block; }
+
+  .ref-card { background:linear-gradient(135deg,#1a1230,#0f172a); border:1px solid #2d1f5e; border-radius:20px; padding:20px; margin-bottom:16px; text-align:center; }
+  .ref-icon { font-size:40px; margin-bottom:10px; }
+  .ref-title { font-size:19px; font-weight:700; margin-bottom:6px; }
+  .ref-desc { font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .ref-bonus { font-size:30px; font-weight:700; color:var(--accent); }
+  .ref-bonus-label { font-size:11px; color:var(--muted); margin-top:2px; }
+  .ref-link-box { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; margin-top:18px; }
+  .ref-link { font-size:12px; color:var(--muted); font-family:'Space Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:left; }
+  .copy-btn { background:var(--accent); color:var(--bg); border:none; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; margin-left:10px; flex-shrink:0; }
+  .share-btn { width:100%; margin-top:12px; padding:14px; border-radius:12px; border:none; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--bg); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .ref-stats { display:flex; gap:10px; margin-top:14px; }
+  .ref-stat { flex:1; background:var(--bg3); border-radius:12px; padding:12px; text-align:center; }
+  .ref-stat .v { font-size:20px; font-weight:700; color:var(--accent); }
+  .ref-stat .l { font-size:10px; color:var(--muted); }
+
+  .steps-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px 16px; }
+  .step-row { display:flex; align-items:center; gap:12px; padding:9px 0; font-size:13px; color:var(--text); }
+  .step-num { width:24px; height:24px; border-radius:6px; background:var(--bg3); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+
+  .task-summary-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px; text-align:center; margin-bottom:20px; }
+  .task-summary-card .icon { font-size:40px; margin-bottom:10px; }
+  .task-summary-card .title { font-size:19px; font-weight:700; margin-bottom:6px; }
+  .task-summary-card .sub { font-size:13px; color:var(--muted); margin-bottom:18px; }
+  .task-summary-box { background:var(--bg3); border-radius:14px; padding:16px; }
+  .task-summary-box .v { font-size:26px; font-weight:700; color:var(--accent); font-family:'Space Mono',monospace; }
+  .task-summary-box .l { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  .task-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+  .task-left { display:flex; align-items:center; gap:12px; flex:1; }
+  .task-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; background:rgba(96,200,240,0.12); }
+  .task-name { font-size:13px; font-weight:700; margin-bottom:3px; }
+  .task-desc { font-size:11px; color:var(--muted); }
+  .task-progress { font-size:10px; color:var(--accent); margin-top:3px; font-weight:600; }
+  .task-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .task-reward { font-size:12px; font-weight:700; color:var(--accent); white-space:nowrap; }
+  .task-btn { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--bg); border:none; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .task-btn.done { background:var(--bg3); color:var(--green); border:1px solid var(--green); cursor:default; }
+  .task-btn:disabled { opacity:0.6; cursor:default; }
+  .task-section-title { font-size:12px; color:var(--muted); font-weight:700; letter-spacing:1px; text-transform:uppercase; margin:18px 0 10px; display:flex; align-items:center; gap:6px; }
+  .task-section-title:first-of-type { margin-top:0; }
+
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:flex-end; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--bg2); border-radius:24px 24px 0 0; padding:24px; width:100%; max-height:88vh; overflow-y:auto; border-top:1px solid var(--border); animation:slideUp 0.3s ease; }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+  .modal-title { font-size:18px; font-weight:700; margin-bottom:6px; }
+  .modal-desc { font-size:13px; color:var(--muted); margin-bottom:20px; }
+  .amount-display { background:var(--bg3); border-radius:14px; padding:16px; text-align:center; margin-bottom:16px; }
+  .amount-display .label { font-size:12px; color:var(--muted); margin-bottom:8px; }
+  .amount-display .value { font-family:'Space Mono',monospace; font-size:32px; font-weight:700; color:var(--accent); }
+  .input-group { margin-bottom:16px; }
+  .input-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+  .input-group input, .input-group select { width:100%; padding:12px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; color:var(--text); font-family:inherit; font-size:14px; }
+  .input-group input:focus, .input-group select:focus { outline:none; border-color:var(--accent); }
+  .btn-modal { width:100%; padding:12px; border-radius:10px; border:none; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px; }
+  .btn-modal.primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--bg); }
+  .btn-modal.primary:disabled { opacity:0.45; cursor:not-allowed; }
+  .btn-modal.secondary { background:var(--bg3); color:var(--muted); }
+  .btn-modal.text-only { background:none; color:var(--muted); text-align:center; }
+
+  .ads-warning { background:rgba(244,63,94,0.08); border:1px solid var(--red); border-radius:14px; padding:16px; text-align:center; margin-bottom:16px; }
+  .ads-warning .icon { font-size:26px; margin-bottom:8px; }
+  .ads-warning .title { color:var(--red); font-weight:700; font-size:14px; margin-bottom:4px; }
+  .ads-warning .sub { font-size:12px; color:var(--muted); }
+
+  .quick-amounts { display:flex; gap:8px; margin:14px 0; }
+  .quick-amounts button { flex:1; padding:12px 4px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; color:var(--text); font-family:inherit; font-weight:700; font-size:12px; cursor:pointer; }
+  .quick-amounts button:active { border-color:var(--accent); }
+
+  .info-rows { background:var(--bg3); border-radius:12px; padding:14px; margin:16px 0; }
+  .info-row { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; }
+  .info-row .l { color:var(--muted); }
+  .info-row .v { font-weight:700; color:var(--green); }
+  .info-row .v.bad { color:var(--red); }
+
+  .streak-day { width:24px; height:24px; border-radius:6px; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .streak-day.done { background:var(--green); color:var(--bg); }
+  .streak-day.today { background:var(--accent); color:var(--bg); }
+
+  .toast { position:fixed; bottom:100px; left:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:14px; font-size:13px; z-index:300; display:none; animation:slideIn 0.3s ease; }
+  .toast.show { display:block; }
+  @keyframes slideIn { from{transform:translateX(-400px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+  /* ADMIN STYLES */
+  .admin-mode { display:none; position:fixed; inset:0; background:var(--bg); z-index:500; flex-direction:column; overflow:hidden; }
+  .admin-mode.active { display:flex; }
+  .admin-header { background:var(--bg2); padding:16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .admin-title { font-size:18px; font-weight:700; color:var(--accent); }
+  .admin-close { background:var(--red); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-family:inherit; }
+  .admin-content { flex:1; padding:16px; overflow-y:auto; }
+  .admin-nav { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; }
+  .admin-nav-btn { padding:10px 16px; background:var(--bg3); color:var(--muted); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-family:inherit; font-weight:600; white-space:nowrap; }
+  .admin-nav-btn.active { background:var(--accent); color:var(--bg); border:none; }
+  .admin-section { display:none; }
+  .admin-section.active { display:block; }
+  .admin-table { width:100%; border-collapse:collapse; }
+  .admin-table th { background:var(--bg3); padding:10px; text-align:left; font-weight:600; font-size:12px; border-bottom:1px solid var(--border); }
+  .admin-table td { padding:10px; border-bottom:1px solid var(--border); font-size:12px; }
+  .admin-table tr:hover { background:rgba(96,200,240,0.05); }
+  .admin-stat-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .admin-stat-label { font-size:11px; color:var(--muted); margin-bottom:6px; }
+  .admin-stat-value { font-size:20px; font-weight:700; color:var(--accent); }
+  .admin-btn { padding:8px 12px; background:var(--accent); color:var(--bg); border:none; border-radius:6px; cursor:pointer; font-weight:600; font-family:inherit; font-size:12px; }
+  .admin-btn.danger { background:var(--red); }
+  .admin-form { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .admin-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  .admin-search { width:100%; padding:10px 12px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:inherit; font-size:13px; margin-bottom:12px; }
+  .admin-bulk-row { display:flex; gap:8px; margin-bottom:14px; }
+  .admin-bulk-row input { flex:1; padding:10px 12px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:inherit; font-size:13px; }
+  .badge-status { padding:3px 8px; border-radius:4px; font-size:10px; font-weight:700; }
+  .badge-status.active { background:rgba(34,211,160,0.2); color:var(--green); }
+  .badge-status.banned { background:rgba(244,63,94,0.2); color:var(--red); }
+  .row-actions { display:flex; gap:4px; flex-wrap:wrap; }
+  .row-actions button { padding:5px 8px; border:none; border-radius:6px; cursor:pointer; font-family:inherit; font-size:10px; font-weight:700; white-space:nowrap; }
+  .btn-mini-blue { background:rgba(96,200,240,0.25); color:var(--accent); }
+  .btn-mini-red { background:rgba(244,63,94,0.25); color:var(--red); }
+  .btn-mini-green { background:rgba(34,211,160,0.25); color:var(--green); }
+
+  /* BANNED SCREEN */
+  .banned-screen { display:none; position:fixed; inset:0; background:var(--bg); z-index:600; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; }
+  .banned-screen.active { display:flex; }
+  .banned-screen .icon { font-size:56px; margin-bottom:16px; }
+  .banned-screen .title { font-size:20px; font-weight:700; color:var(--red); margin-bottom:8px; }
+  .banned-screen .sub { font-size:14px; color:var(--muted); }
+</style>
+<script src='//libtl.com/sdk.js' data-zone='11250385' data-sdk='show_11250385'></script>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo" id="logoClick">🥛</div>
+  <div class="loading-text">Milky Rush</div>
+  <div class="loading-sub">Tap & Earn Milk</div>
+  <div class="loading-bar">
+    <div class="loading-bar-fill"></div>
+  </div>
+</div>
+
+<!-- BANNED SCREEN -->
+<div class="banned-screen" id="bannedScreen">
+  <div class="icon">🚫</div>
+  <div class="title">You are banned</div>
+  <div class="sub">Your access to Milky Rush has been restricted by the admin.</div>
+</div>
+
+<!-- USER APP -->
+<div id="userApp" style="display:block;">
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="header">
+      <div class="header-top">
+        <div class="user-info">
+          <div class="avatar" id="avatarInitial">U</div>
+          <div>
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-level">🥛 Milk Collector</div>
+          </div>
+        </div>
+        <button class="daily-badge" id="dailyBadgeBtn" onclick="openDailyModal()">🎁 Daily</button>
+      </div>
+      <div class="balance-label">TOTAL MILK BALANCE</div>
+      <div class="balance-amount" id="mainBalance">0</div>
+      <div class="stats-row">
+        <div class="stat-pill">
+          <div class="v" id="totalEarned">0</div>
+          <div class="l">Total Earned</div>
+        </div>
+        <div class="stat-pill">
+          <div class="v" id="tapCountDisplay">0</div>
+          <div class="l">Total Taps</div>
+        </div>
+        <div class="stat-pill">
+          <div class="v" id="streakDisplay">1</div>
+          <div class="l">Day Streak 🔥</div>
+        </div>
+      </div>
+      <div class="level-row">
+        <span id="levelLabel">Level 1</span>
+        <span id="levelProgress">0/100 taps</span>
+      </div>
+      <div class="level-bar-track">
+        <div class="level-bar-fill" id="levelBarFill" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <div class="section-title">TAP TO EARN MILK</div>
+    <div class="tap-card">
+      <button class="tap-btn" onclick="tapMilk(event)">
+        🥛
+        <span class="tap-label">TAP!</span>
+      </button>
+      <div class="tap-stats">
+        <div class="tap-stat">
+          <div class="v" id="tapCoinsEarned">0</div>
+          <div class="l">Total Taps</div>
+        </div>
+        <div class="tap-stat">
+          <div class="v">+1</div>
+          <div class="l">Per Tap</div>
+        </div>
+      </div>
+      <div id="tapEnergyStatus" style="margin-top:12px;font-size:12px;color:var(--muted);">⚡ 100/100 taps left</div>
+    </div>
+
+    <div class="section-title">HOW TO EARN MORE MILK</div>
+    <div class="earn-card">
+      <div class="earn-row">
+        <span>👆</span>
+        <span>Tap the bottle — +1 Milk per tap</span>
+      </div>
+    </div>
+    <div class="earn-card">
+      <div class="earn-row">
+        <span>🎁</span>
+        <span>Claim daily reward — up to +500 Milk</span>
+      </div>
+    </div>
+    <div class="earn-card">
+      <div class="earn-row">
+        <span>📺</span>
+        <span>Watch video ads — +50 Milk each</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLET PAGE -->
+  <div class="page" id="page-wallet">
+    <div class="section-title" style="margin-top:16px;">WALLET</div>
+    <div class="wallet-card">
+      <div class="wallet-label">AVAILABLE MILK BALANCE</div>
+      <div class="wallet-amount" id="walletBalance">0 <span style="font-size:14px;color:var(--muted)">Milk</span></div>
+      <button class="wd-btn" onclick="openWithdrawModal()">⬆️ Withdraw Milk</button>
+    </div>
+
+    <div class="section-title">MILK TRANSACTION HISTORY</div>
+    <div id="txList"></div>
+  </div>
+
+  <!-- TASKS PAGE -->
+  <div class="page" id="page-tasks">
+    <div style="padding-top:16px;">
+      <div class="task-summary-card">
+        <div class="icon">🥛</div>
+        <div class="title">Earn Milk Coins</div>
+        <div class="sub">Complete tasks to earn free Milk!</div>
+        <div class="task-summary-box">
+          <div class="v" id="tasksEarnedTotal">0</div>
+          <div class="l">Milk earned from tasks</div>
+        </div>
+      </div>
+
+      <div class="task-section-title">🥛 CHANNEL TASKS</div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">📢</div>
+          <div>
+            <div class="task-name">Join @MilkRushOfficial</div>
+            <div class="task-desc">Join our official Telegram channel</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="mainChannelRewardDisplay">+1,000 🥛</div>
+          <button class="task-btn" id="task-channel-btn" onclick="joinChannel()">Join</button>
+          <div class="task-hint" id="task-channel-hint" style="display:none;font-size:11px;color:#8fa3b8;margin-top:4px;">Tap again after joining</div>
+        </div>
+      </div>
+      <div id="dynamicChannelTasks"></div>
+
+      <div class="task-section-title">🎯 DAILY TASKS</div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">🎁</div>
+          <div>
+            <div class="task-name">Claim Daily Milk</div>
+            <div class="task-desc">Claim your daily bonus Milk</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="dailyTaskReward">+100</div>
+          <button class="task-btn" id="dailyTaskClaimBtn" onclick="openDailyModal()">Claim</button>
+        </div>
+      </div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">🤝</div>
+          <div>
+            <div class="task-name">Invite a Friend</div>
+            <div class="task-desc">Share your referral link</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="inviteTaskReward">+500</div>
+          <button class="task-btn" onclick="showPage('referral', document.querySelectorAll('.nav-btn')[3])">Invite</button>
+        </div>
+      </div>
+
+      <div class="task-section-title">📺 WATCH &amp; EARN</div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">▶️</div>
+          <div>
+            <div class="task-name">Watch Video Ad</div>
+            <div class="task-desc">Watch a short ad to earn Milk</div>
+            <div class="task-progress" id="adsProgress">0/10 watched</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="adRewardDisplay">+50</div>
+          <button class="task-btn" id="watchAdBtn" onclick="watchAd()">Watch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERRAL PAGE -->
+  <div class="page" id="page-referral">
+    <div style="padding-top:16px;">
+      <div class="ref-card">
+        <div class="ref-icon">🤝</div>
+        <div class="ref-title">Invite &amp; Earn Milk</div>
+        <div class="ref-desc" id="refDescText">Get 150 Milk per friend — 50 instantly + 100 more when they watch 10 ads!</div>
+        <div class="ref-bonus" id="earnedBonus">0</div>
+        <div class="ref-bonus-label">Milk earned from referrals</div>
+        <div class="ref-link-box">
+          <div class="ref-link" id="refLink">Loading...</div>
+          <button class="copy-btn" onclick="copyRef()">Copy</button>
+        </div>
+        <button class="share-btn" onclick="shareRef()">🚀 Share on Telegram</button>
+        <div class="ref-stats">
+          <div class="ref-stat">
+            <div class="v" id="refCount">0</div>
+            <div class="l">Friends Invited</div>
+          </div>
+          <div class="ref-stat">
+            <div class="v" id="refEarnedStat">0</div>
+            <div class="l">Milk Earned</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">HOW IT WORKS</div>
+      <div class="steps-card">
+        <div class="step-row"><div class="step-num">1</div><div>Copy your MilkRush referral link</div></div>
+        <div class="step-row"><div class="step-num">2</div><div>Share with friends on Telegram/WhatsApp</div></div>
+        <div class="step-row"><div class="step-num">3</div><div>Friend joins MilkRush via your link</div></div>
+        <div class="step-row"><div class="step-num">4</div><div id="refStep4Text">You get +50 Milk instantly, then +100 more once they watch 10 ads!</div></div>
+        <div class="step-row"><div class="step-num">5</div><div>Once your friend watches 10 ads, you automatically get the remaining bonus</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div class="nav">
+    <button class="nav-btn active" onclick="showPage('home',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('wallet',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+      <span>Wallet</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('tasks',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+      <span>Tasks</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('referral',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Referral</span>
+    </button>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="dailyModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🎁 Daily Reward</div>
+      <div class="modal-desc" id="dailyRewardLabel">Claim your Milk reward!</div>
+      <div class="amount-display">
+        <div class="label">You'll get</div>
+        <div class="value" id="dailyRewardAmount">+100</div>
+      </div>
+      <div class="section-title">7-DAY STREAK</div>
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;" id="streakDays"></div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px;">
+        Current Streak: <strong id="streakCount">1</strong> days 🔥
+      </div>
+      <button class="btn-modal primary" id="dailyClaimBtn" onclick="claimDaily()">CLAIM REWARD</button>
+      <button class="btn-modal secondary" onclick="closeModal('dailyModal')">LATER</button>
+    </div>
+  </div>
+
+  <!-- GRAM EXCHANGE MODAL -->
+  <div class="modal-overlay" id="withdrawModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">💎 Milk → Withdraw</div>
+      <div class="modal-desc" id="withdrawReqSubtitle">10 Ads (Today) + 3 Invites Required</div>
+
+      <div class="method-tabs" id="withdrawMethodTabs" style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="method-tab active" data-method="GRAM" onclick="selectWithdrawMethod('GRAM')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);background:var(--accent);color:#0f172a;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;">💎 GRAM</button>
+        <button class="method-tab" data-method="USDT_BEP20" onclick="selectWithdrawMethod('USDT_BEP20')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--fg);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;">💵 USDT (BEP20)</button>
+        <button class="method-tab" data-method="BINANCE_UID" onclick="selectWithdrawMethod('BINANCE_UID')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--fg);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;">🅱️ Binance UID</button>
+      </div>
+
+      <div class="ads-warning" id="adsWarningBox">
+        <div class="icon">📺</div>
+        <div class="title" id="adsWarningTitle">Watch 10 more ads first!</div>
+        <div class="sub">Go to Tasks → Watch Video Ads, and invite friends from the Referral tab</div>
+      </div>
+
+      <div class="amount-display">
+        <div class="value" id="exchangeAmountDisplay">10000</div>
+        <div class="label" style="margin-top:8px;margin-bottom:0;">Milk to exchange</div>
+      </div>
+
+      <div class="quick-amounts" id="quickAmountsRow">
+        <button onclick="setExchangeAmount(10000)">10K</button>
+        <button onclick="setExchangeAmount(50000)">50K</button>
+        <button onclick="setExchangeAmount(100000)">100K</button>
+        <button onclick="setExchangeAmount('max')">MAX</button>
+      </div>
+
+      <div class="amount-display">
+        <div class="label">YOU WILL RECEIVE</div>
+        <div class="value" id="exchangeGramDisplay">0.10 GRAM</div>
+        <div class="label" style="margin-top:8px;margin-bottom:0;" id="exchangeRateSubLabel">10,000 Milk = 0.1 GRAM</div>
+      </div>
+
+      <div class="input-group">
+        <label id="gramAddressLabel">💎 Your TON Wallet Address (GRAM)</label>
+        <input type="text" id="gramAddress" placeholder="Enter your TON wallet address">
+      </div>
+
+      <div class="info-rows">
+        <div class="info-row"><span class="l">Exchange Rate</span><span class="v" id="exchangeRateInfoLabel">100,000 Milk = 1 GRAM</span></div>
+        <div class="info-row"><span class="l">Minimum</span><span class="v" id="exchangeMinLabel">0.1 GRAM (10,000 Milk)</span></div>
+        <div class="info-row"><span class="l">Ads Required (Today)</span><span class="v" id="adsRequiredStatus">❌ Need 10 more</span></div>
+        <div class="info-row"><span class="l">Invites Required</span><span class="v" id="referralsRequiredStatus">❌ Need 3 more</span></div>
+      </div>
+
+      <button class="btn-modal primary" id="exchangeSubmitBtn" onclick="confirmGramExchange()">💎 Exchange &amp; Withdraw</button>
+      <button class="btn-modal text-only" onclick="closeModal('withdrawModal')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- ADMIN PANEL (HIDDEN) -->
+<div class="admin-mode" id="adminMode">
+  <div class="admin-header">
+    <div class="admin-title">🔒 Admin Panel</div>
+    <button class="admin-close" onclick="closeAdminPanel()">❌ CLOSE</button>
+  </div>
+  
+  <div class="admin-content">
+    <div class="admin-nav">
+      <button class="admin-nav-btn active" onclick="switchAdminTab('dashboard',this)">📊 Dashboard</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('transactions',this)">💳 Transactions</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('channels',this)">📢 Channels</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('users',this)">👥 Users</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('withdrawals',this)">⬆️ Withdrawals</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('settings',this)">⚙️ Settings</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="admin-section active" id="admin-dashboard">
+      <h3 style="margin-bottom:12px;font-size:16px;">📊 Stats</h3>
+      <div class="admin-grid">
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Total Users</div>
+          <div class="admin-stat-value" id="adminTotalUsers">0</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Total Earned</div>
+          <div class="admin-stat-value" id="adminTotalEarned">0</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Withdrawals</div>
+          <div class="admin-stat-value" id="adminPendingWithdrawals">0</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Channels</div>
+          <div class="admin-stat-value" id="adminActiveChannels">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="admin-section" id="admin-transactions">
+      <h3 style="margin-bottom:12px;font-size:16px;">💳 Recent Transactions</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>User</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="adminTxnList">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CHANNELS -->
+    <div class="admin-section" id="admin-channels">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;">📢 Channels</h3>
+        <button class="admin-btn" onclick="toggleAddChannelForm()">➕ Add</button>
+      </div>
+      
+      <div id="addChannelForm" class="admin-form" style="display:none;">
+        <h4 style="margin-bottom:10px;font-size:14px;">New Task</h4>
+        <div class="input-group">
+          <label>Channel Username (e.g. @MyChannel)</label>
+          <input type="text" id="channelNameInput" placeholder="@MyChannel">
+        </div>
+        <div class="input-group">
+          <label>Reward (Milk)</label>
+          <input type="number" id="channelRewardInput" placeholder="e.g., 1000">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-modal primary" style="flex:1;" onclick="submitAddChannel()">Create</button>
+          <button class="btn-modal secondary" style="flex:1;" onclick="toggleAddChannelForm()">Cancel</button>
+        </div>
+      </div>
+
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Icon</th>
+            <th>Name</th>
+            <th>Reward</th>
+            <th>Type</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminChannelsList">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- USERS -->
+    <div class="admin-section" id="admin-users">
+      <h3 style="margin-bottom:4px;font-size:16px;">👥 Users (<span id="adminUserCount">0</span>)</h3>
+      <input type="text" class="admin-search" id="adminUserSearch" placeholder="🔍 Search by name or ID..." oninput="renderUsersTable()">
+      <div class="admin-bulk-row">
+        <input type="number" id="bulkBalanceAmount" placeholder="Amount to add to ALL users (e.g. 100)">
+        <button class="admin-btn" onclick="bulkAddBalance()">➕ Add To All</button>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Name</th>
+            <th>Balance</th>
+            <th>Earned</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersList">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- WITHDRAWALS -->
+    <div class="admin-section" id="admin-withdrawals">
+      <h3 style="margin-bottom:12px;font-size:16px;">⬆️ Withdrawals</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Address / UID</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminWithdrawalsList">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="admin-section" id="admin-settings">
+      <h3 style="margin-bottom:12px;font-size:16px;">⚙️ Bot Settings</h3>
+      <div class="admin-form">
+        <div class="input-group">
+          <label>Milk Reward Per Ad Watch</label>
+          <input type="number" id="settingAdReward" placeholder="e.g. 50">
+        </div>
+        <div class="input-group">
+          <label>Daily Ad Watch Limit (per user, resets every day)</label>
+          <input type="number" id="settingAdsDailyLimit" placeholder="e.g. 10">
+        </div>
+        <div class="input-group">
+          <label>Referral Instant Reward (Milk — when friend opens bot)</label>
+          <input type="number" id="settingReferralInstant" placeholder="e.g. 50">
+        </div>
+        <div class="input-group">
+          <label>Referral Bonus Reward (Milk — when friend watches 10 ads)</label>
+          <input type="number" id="settingReferralAdsBonus" placeholder="e.g. 100">
+        </div>
+        <div class="input-group">
+          <label>Minimum Withdrawal (Milk)</label>
+          <input type="number" id="settingMinWithdrawal" placeholder="e.g. 10000">
+        </div>
+        <div class="input-group">
+          <label>Daily Check-in Reward (Day 1, Milk — other 6 days scale up automatically)</label>
+          <input type="number" id="settingDailyRewardBase" placeholder="e.g. 100">
+        </div>
+        <div class="input-group">
+          <label>Join @MilkRushOfficial Channel Reward (Milk)</label>
+          <input type="number" id="settingChannelReward" placeholder="e.g. 1000">
+        </div>
+        <div class="input-group">
+          <label>Free Taps Before Cooldown (per session)</label>
+          <input type="number" id="settingTapEnergyMax" placeholder="e.g. 100">
+        </div>
+        <div class="input-group">
+          <label>Tap Cooldown Duration (minutes, after using all free taps)</label>
+          <input type="number" id="settingTapCooldown" placeholder="e.g. 30">
+        </div>
+        <div class="input-group">
+          <label>Max Taps Per Day (per user, hard cap, resets at midnight)</label>
+          <input type="number" id="settingTapDailyLimit" placeholder="e.g. 500">
+        </div>
+        <div class="input-group">
+          <label>Withdrawal Requirement — Ads Watched Today</label>
+          <input type="number" id="settingWithdrawAdsRequired" placeholder="e.g. 10">
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:0;font-weight:400;">
+            <input type="checkbox" id="settingWithdrawAdsEnabled" style="width:16px;height:16px;">
+            Require this condition for withdrawal
+          </label>
+        </div>
+        <div class="input-group">
+          <label>Withdrawal Requirement — Friends Invited (total)</label>
+          <input type="number" id="settingWithdrawReferralsRequired" placeholder="e.g. 3">
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:0;font-weight:400;">
+            <input type="checkbox" id="settingWithdrawReferralsEnabled" style="width:16px;height:16px;">
+            Require this condition for withdrawal
+          </label>
+        </div>
+        <button class="btn-modal primary" onclick="saveSettings()">💾 Save Settings</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);padding:0 4px;">Changes apply instantly to all users on their next app load.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADJUST BALANCE MODAL -->
+<div class="modal-overlay" id="adjustBalanceModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💰 Adjust Balance</div>
+    <div class="modal-desc" id="adjustBalanceUserLabel">User</div>
+    <div class="input-group">
+      <label>Amount (Milk) — always positive, pick Add or Subtract below</label>
+      <input type="number" id="adjustBalanceAmount" placeholder="e.g. 500">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-modal primary" style="background:var(--green);flex:1;" onclick="submitAdjustBalance('add')">➕ Add</button>
+      <button class="btn-modal primary" style="background:var(--red);flex:1;" onclick="submitAdjustBalance('subtract')">➖ Subtract</button>
+    </div>
+    <button class="btn-modal secondary" onclick="closeModal('adjustBalanceModal')">Cancel</button>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// CONFIG — SUPABASE CONNECTION (FROM YOUR INDEX)
+// =====================================================
+const SUPABASE_URL = 'https://qzgfmqvtbyxmwuzqflmn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_XrIYLJmvjjMb6BkMNeCqnA_IIoDaTGY';
+const BACKEND_URL = 'https://milkyrush-v2-production.up.railway.app'; // Railway bot backend - handles membership checks so the bot token never touches the client
+const BOT_USERNAME = 'MilkRushBot';
+const CHANNEL = '@MilkRushOfficial';
+
+// Calls one of our admin-protected backend endpoints, attaching Telegram's
+// signed initData so the backend can verify the request really comes from
+// the admin's Telegram account (see requireAdmin in index.js).
+async function adminApi(path, body) {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '',
+    },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.ok) throw new Error(data.error || 'request failed');
+  return data;
+}
+const ADMIN_ID = 6520878121; // sirf ye Telegram ID admin panel dekh/khol sakti hai
+
+// Calls a user-facing reward endpoint on the backend, attaching Telegram's
+// signed initData so the server knows exactly which Telegram account is
+// making the request. This REPLACES all direct anon-key writes to `users`
+// for anything balance-related (tap, ads, daily, channel, withdrawal) - the
+// backend recomputes/validates everything server-side before touching money.
+async function apiUser(path, body) {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '',
+    },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || 'request failed');
+  return data;
+}
+
+// GRAM exchange config
+const ADS_REQUIRED = 10; // lifetime ads milestone used for the one-time referral bonus payout
+const WITHDRAWAL_DAILY_ADS_REQUIRED = 10; // fallback default; real value now comes from appSettings (admin-editable)
+const WITHDRAWAL_REFERRALS_REQUIRED = 3; // fallback default; real value now comes from appSettings (admin-editable)
+
+// If the admin disables a requirement, it's treated as "0 needed" (always satisfied).
+// Escapes user-controlled text (e.g. Telegram first_name/username) before it's
+// inserted into innerHTML, so a malicious display name can't inject a script
+// that runs inside the admin's own privileged session.
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function getAdsRequiredForWithdrawal() {
+  if (appSettings.withdrawal_ads_enabled === false) return 0;
+  return appSettings.withdrawal_ads_required ?? WITHDRAWAL_DAILY_ADS_REQUIRED;
+}
+function getReferralsRequiredForWithdrawal() {
+  if (appSettings.withdrawal_referrals_enabled === false) return 0;
+  return appSettings.withdrawal_referrals_required ?? WITHDRAWAL_REFERRALS_REQUIRED;
+}
+const MILK_PER_GRAM = 100000; // 10,000 Milk = 0.1 GRAM  ->  100,000 Milk = 1 GRAM
+const MIN_EXCHANGE_MILK = 10000;
+// =====================================================
+
+const API = (path) => `${SUPABASE_URL}/rest/v1/${path}`;
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Prefer': 'return=representation'
+};
+
+let currentUser = null;
+let tgUser = null;
+let channelJoined = false;
+let allChannels = [];
+let allWithdrawalsCache = [];
+let logoClickCount = 0;
+let exchangeAmount = MIN_EXCHANGE_MILK;
+let appSettings = { id: 1, ad_reward: 50, ads_daily_limit: 10, referral_instant_reward: 50, referral_ads_reward: 100, min_withdrawal_milk: 10000, daily_reward_base: 100, channel_reward: 1000, tap_energy_max: 100, tap_cooldown_minutes: 30, tap_daily_limit: 500, withdrawal_ads_required: 10, withdrawal_ads_enabled: true, withdrawal_referrals_required: 3, withdrawal_referrals_enabled: true };
+let allUsersCache = [];
+let adjustBalanceTargetId = null;
+
+// DATABASE FUNCTIONS
+async function dbGet(table, filter='') {
+  try {
+    const url = filter ? `${API(table)}?${filter}` : API(table);
+    const r = await fetch(url, { headers: HEADERS });
+    if (!r.ok) {
+      const body = await r.text().catch(()=> '');
+      throw new Error(`DB Error: ${r.status} — ${body}`);
+    }
+    return await r.json();
+  } catch(e) {
+    console.error('dbGet error:', e);
+    alert('DEBUG dbGet(' + table + ') FAILED:\n' + e.message); // TEMP DEBUG — remove after fixing
+    return [];
+  }
+}
+
+async function dbInsert(table, data) {
+  const r = await fetch(API(table), { method:'POST', headers:HEADERS, body:JSON.stringify(data) });
+  if (!r.ok) {
+    const body = await r.text().catch(()=> '');
+    console.error(`dbInsert(${table}) failed: ${r.status} — ${body}`);
+    throw new Error(`Insert Error: ${r.status} — ${body}`);
+  }
+  return await r.json();
+}
+
+async function dbUpdate(table, filter, data) {
+  const r = await fetch(`${API(table)}?${filter}`, { method:'PATCH', headers:HEADERS, body:JSON.stringify(data) });
+  if (!r.ok) {
+    const body = await r.text().catch(()=> '');
+    console.error(`dbUpdate(${table}) failed: ${r.status} — ${body}`);
+    throw new Error(`Update Error: ${r.status} — ${body}`);
+  }
+  return await r.json();
+}
+
+// Fetches ALL rows for a table by looping in pages, bypassing Supabase's server-side
+// "max rows" cap (which otherwise silently truncates a plain dbGet() to e.g. 10/1000 rows).
+async function dbGetAll(table, filter='') {
+  let all = [];
+  let offset = 0;
+  const pageSize = 1000;
+  while (true) {
+    const sep = filter ? filter + '&' : '';
+    const batch = await dbGet(table, `${sep}limit=${pageSize}&offset=${offset}`);
+    if (!batch || batch.length === 0) break;
+    all = all.concat(batch);
+    if (batch.length < pageSize) break; // last page reached
+    offset += batch.length;
+  }
+  return all;
+}
+
+async function fetchSettings() {
+  try {
+    const rows = await dbGet('settings', 'id=eq.1');
+    if (rows.length > 0) {
+      appSettings = {
+        id: 1,
+        ad_reward: rows[0].ad_reward ?? 50,
+        ads_daily_limit: rows[0].ads_daily_limit ?? 10,
+        referral_instant_reward: rows[0].referral_instant_reward ?? 50,
+        referral_ads_reward: rows[0].referral_ads_reward ?? 100,
+        min_withdrawal_milk: rows[0].min_withdrawal_milk ?? 10000,
+        daily_reward_base: rows[0].daily_reward_base ?? 100,
+        channel_reward: rows[0].channel_reward ?? 1000,
+        tap_energy_max: rows[0].tap_energy_max ?? 100,
+        tap_cooldown_minutes: rows[0].tap_cooldown_minutes ?? 30,
+        tap_daily_limit: rows[0].tap_daily_limit ?? 500,
+        withdrawal_ads_required: rows[0].withdrawal_ads_required ?? 10,
+        withdrawal_ads_enabled: rows[0].withdrawal_ads_enabled ?? true,
+        withdrawal_referrals_required: rows[0].withdrawal_referrals_required ?? 3,
+        withdrawal_referrals_enabled: rows[0].withdrawal_referrals_enabled ?? true
+      };
+    } else {
+      // Anon key is now read-only (RLS locked down) - it can no longer seed this
+      // row directly. In the very unlikely case the settings row is missing,
+      // fall back to the hardcoded defaults already set on appSettings above;
+      // an admin should create/save the row once via the Admin Panel settings
+      // form, which goes through the backend's service-role-backed endpoint.
+      console.warn('Settings row missing - using built-in defaults until an admin saves settings once.');
+    }
+  } catch(e) {
+    console.error('Settings fetch error:', e);
+  }
+}
+
+async function saveSettings() {
+  const adReward = parseInt(document.getElementById('settingAdReward').value) || 50;
+  const adsDailyLimit = parseInt(document.getElementById('settingAdsDailyLimit').value) || 10;
+  const referralInstant = parseInt(document.getElementById('settingReferralInstant').value) || 50;
+  const referralAdsBonus = parseInt(document.getElementById('settingReferralAdsBonus').value) || 100;
+  const minWithdrawal = parseInt(document.getElementById('settingMinWithdrawal').value) || 10000;
+  const dailyRewardBase = parseInt(document.getElementById('settingDailyRewardBase').value) || 100;
+  const channelReward = parseInt(document.getElementById('settingChannelReward').value) || 1000;
+  const tapEnergyMax = parseInt(document.getElementById('settingTapEnergyMax').value) || 100;
+  const tapCooldown = parseInt(document.getElementById('settingTapCooldown').value) || 30;
+  const tapDailyLimit = parseInt(document.getElementById('settingTapDailyLimit').value) || 500;
+  const withdrawAdsRequired = parseInt(document.getElementById('settingWithdrawAdsRequired').value) || 0;
+  const withdrawAdsEnabled = document.getElementById('settingWithdrawAdsEnabled').checked;
+  const withdrawReferralsRequired = parseInt(document.getElementById('settingWithdrawReferralsRequired').value) || 0;
+  const withdrawReferralsEnabled = document.getElementById('settingWithdrawReferralsEnabled').checked;
+  try {
+    await adminApi('/api/admin/settings', {
+      ad_reward: adReward,
+      ads_daily_limit: adsDailyLimit,
+      referral_instant_reward: referralInstant,
+      referral_ads_reward: referralAdsBonus,
+      min_withdrawal_milk: minWithdrawal,
+      daily_reward_base: dailyRewardBase,
+      channel_reward: channelReward,
+      tap_energy_max: tapEnergyMax,
+      tap_cooldown_minutes: tapCooldown,
+      tap_daily_limit: tapDailyLimit,
+      withdrawal_ads_required: withdrawAdsRequired,
+      withdrawal_ads_enabled: withdrawAdsEnabled,
+      withdrawal_referrals_required: withdrawReferralsRequired,
+      withdrawal_referrals_enabled: withdrawReferralsEnabled
+    });
+    appSettings = {
+      id: 1,
+      ad_reward: adReward,
+      ads_daily_limit: adsDailyLimit,
+      referral_instant_reward: referralInstant,
+      referral_ads_reward: referralAdsBonus,
+      min_withdrawal_milk: minWithdrawal,
+      daily_reward_base: dailyRewardBase,
+      channel_reward: channelReward,
+      tap_energy_max: tapEnergyMax,
+      tap_cooldown_minutes: tapCooldown,
+      tap_daily_limit: tapDailyLimit,
+      withdrawal_ads_required: withdrawAdsRequired,
+      withdrawal_ads_enabled: withdrawAdsEnabled,
+      withdrawal_referrals_required: withdrawReferralsRequired,
+      withdrawal_referrals_enabled: withdrawReferralsEnabled
+    };
+    showToast('✅ Settings saved!');
+  } catch(e) {
+    console.error('Save settings error:', e);
+    showToast('❌ Save failed — check console (often a missing DB column)');
+  }
+}
+
+function getDailyRewards() {
+  const base = appSettings.daily_reward_base || 100;
+  return [base, base * 1.5, base * 2, base * 2.5, base * 3, base * 4, base * 5].map(n => Math.round(n));
+}
+
+function getTodayAdsWatched(user) {
+  const today = new Date().toDateString();
+  return user.last_ad_date === today ? (user.ads_watched_today || 0) : 0;
+}
+
+function getTodayTapsCount(user) {
+  const today = new Date().toDateString();
+  return user.last_tap_date === today ? (user.taps_today || 0) : 0;
+}
+
+// INIT
+window.addEventListener('load', async () => {
+  if (window.Telegram?.WebApp) {
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    tgUser = Telegram.WebApp.initDataUnsafe?.user;
+  }
+  if (!tgUser) tgUser = { id: 123456789, first_name: 'Demo', username: 'demouser' };
+  
+  document.getElementById('logoClick').addEventListener('click', logoTripleClick);
+  
+  await fetchSettings();
+  await loadOrCreateUser();
+  await loadChannels();
+  setTimeout(() => { document.getElementById('loadingScreen').style.display='none'; }, 2000);
+
+  // AUTOMATIC ADS: shows up to 2 interstitials within a 6-min window after opening,
+  // 30s apart, first one after a 5s delay. Session persists across page navigation.
+  // Skipped for the admin so opening the Mini App straight into the Admin Panel is ad-free.
+  if (typeof show_11250385 === 'function' && (!tgUser || tgUser.id !== ADMIN_ID)) {
+    show_11250385({
+      type: 'inApp',
+      inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false }
+    });
+  }
+
+  // ADMIN AUTO-OPEN: sirf ADMIN_ID wale user ko Mini App open hote hee Admin Panel dikhega
+  if (tgUser && tgUser.id === ADMIN_ID) {
+    openAdminPanel();
+  } else if (currentUser && currentUser.banned) {
+    document.getElementById('userApp').style.display = 'none';
+    document.getElementById('bannedScreen').classList.add('active');
+  }
+});
+
+// LOGO TRIPLE CLICK (sirf admin ke liye manual re-open, koi password nahi — ID hee check hoti hai)
+function logoTripleClick() {
+  logoClickCount++;
+  if (logoClickCount === 3) {
+    logoClickCount = 0;
+    if (tgUser && tgUser.id === ADMIN_ID) {
+      openAdminPanel();
+    } else {
+      showToast('❌ Access denied!');
+    }
+  }
+  setTimeout(() => { logoClickCount = 0; }, 500);
+}
+
+// USER FUNCTIONS
+async function loadOrCreateUser() {
+  try {
+    // Get-or-create now happens server-side (see /api/user/sync in index.js):
+    // the backend verifies Telegram's signed initData, so a fresh user row
+    // and the one-time referral instant-bonus can only be created for the
+    // Telegram account that's actually opening the app - not spoofed by a
+    // client editing its own request.
+    const tgStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+    const refCode = tgStartParam || new URLSearchParams(window.location.search).get('ref');
+    const { user, created } = await apiUser('/api/user/sync', { ref: refCode || null });
+    currentUser = user;
+    if (created) showToast('🥛 Welcome to Milky Rush!');
+
+    if (currentUser.channel_joined) { channelJoined = true; }
+    if (currentUser.ads_watched == null) currentUser.ads_watched = 0;
+    if (currentUser.completed_channels == null) currentUser.completed_channels = [];
+    renderUI();
+    updateTapEnergyDisplay();
+  } catch(e) {
+    console.error('Load user error:', e);
+    showToast('⚠️ Connection error!');
+  }
+}
+
+async function loadChannels() {
+  try {
+    allChannels = await dbGet('channels');
+    renderDynamicTasks();
+  } catch(e) {
+    console.error('Load channels error:', e);
+  }
+}
+
+function renderDynamicTasks() {
+  const container = document.getElementById('dynamicChannelTasks');
+  if (!container) return;
+  if (!allChannels || allChannels.length === 0) { container.innerHTML = ''; return; }
+
+  const completed = currentUser?.completed_channels || [];
+  container.innerHTML = allChannels.map(c => {
+    const done = completed.includes(c.id);
+    const verifying = pendingVerify.has(c.id);
+    const label = done ? '✅ Done' : (verifying ? 'Verify' : 'Join');
+    return `
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">${c.icon || '📢'}</div>
+          <div>
+            <div class="task-name">Join ${c.name}</div>
+            <div class="task-desc">${c.description || 'Join our Telegram channel'}</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward">+${(c.reward || 0).toLocaleString()} 🥛</div>
+          <button class="task-btn ${done ? 'done' : ''}" ${done ? 'disabled' : ''} onclick="handleDynamicTask(${c.id})">${label}</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function handleDynamicTask(channelId) {
+  const completed = currentUser.completed_channels || [];
+  if (completed.includes(channelId)) { showToast('Already claimed!'); return; }
+  const ch = allChannels.find(c => c.id === channelId);
+  if (!ch) return;
+
+  if (!pendingVerify.has(channelId)) {
+    // Step 1: open the channel
+    const uname = (ch.name || '').replace('@', '');
+    const link = `https://t.me/${uname}`;
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      Telegram.WebApp.openTelegramLink(link);
+    } else {
+      window.open(link, '_blank');
+    }
+    pendingVerify.add(channelId);
+    renderDynamicTasks();
+    return;
+  }
+
+  // Step 2: verify membership before granting reward
+  const isMember = await checkChannelMembership(currentUser.id, ch.name);
+  if (!isMember) {
+    showToast("❌ You haven't joined yet");
+    return;
+  }
+
+  try {
+    const { reward, user } = await apiUser('/api/user/task-reward', { channel_id: channelId });
+    currentUser.balance = user.balance;
+    currentUser.total_earned = user.total_earned;
+    currentUser.completed_channels = user.completed_channels;
+    showToast(`🎉 +${reward.toLocaleString()} Milk!`);
+  } catch (e) {
+    console.error('Task reward error:', e);
+    showToast('❌ Could not verify membership, try again');
+    return;
+  }
+  pendingVerify.delete(channelId);
+  await renderUI();
+  renderDynamicTasks();
+  showToast(`🎉 +${reward.toLocaleString()} Milk!`);
+}
+
+async function renderUI() {
+  if (!currentUser) return;
+  
+  document.getElementById('avatarInitial').textContent = currentUser.first_name[0].toUpperCase();
+  document.getElementById('userName').textContent = currentUser.first_name;
+  document.getElementById('mainBalance').textContent = currentUser.balance.toLocaleString();
+  document.getElementById('totalEarned').textContent = (currentUser.total_earned || 0).toLocaleString();
+  document.getElementById('tapCountDisplay').textContent = (currentUser.tap_count || 0).toLocaleString();
+  document.getElementById('streakDisplay').textContent = currentUser.streak ?? 0;
+  const alreadyClaimedTodayCheck = currentUser.last_claim && new Date(currentUser.last_claim).toDateString() === new Date().toDateString();
+  const dailyTaskBtn = document.getElementById('dailyTaskClaimBtn');
+  if (dailyTaskBtn) {
+    dailyTaskBtn.textContent = alreadyClaimedTodayCheck ? '✅ Claimed' : 'Claim';
+    dailyTaskBtn.classList.toggle('done', !!alreadyClaimedTodayCheck);
+    dailyTaskBtn.disabled = !!alreadyClaimedTodayCheck;
+  }
+  document.getElementById('walletBalance').innerHTML = `${(currentUser.balance || 0).toLocaleString()} <span style="font-size:14px;color:var(--muted)">Milk</span>`;
+  document.getElementById('refLink').textContent = `https://t.me/${BOT_USERNAME}/Play?startapp=${currentUser.id}`;
+  document.getElementById('refCount').textContent = currentUser.referral_count || 0;
+  const instantReward = appSettings.referral_instant_reward || 50;
+  const adsBonusReward = appSettings.referral_ads_reward || 100;
+  const totalReward = instantReward + adsBonusReward;
+  const refEarned = (currentUser.referral_count || 0) * instantReward; // ads-bonus portion is per-friend and tracked via transactions, not multiplied here
+  document.getElementById('earnedBonus').textContent = refEarned.toLocaleString();
+  document.getElementById('refEarnedStat').textContent = refEarned.toLocaleString();
+  document.getElementById('inviteTaskReward').textContent = '+' + totalReward.toLocaleString();
+  document.getElementById('refDescText').textContent = `Get ${totalReward.toLocaleString()} Milk per friend — ${instantReward} instantly + ${adsBonusReward} more when they watch 10 ads!`;
+  document.getElementById('refStep4Text').textContent = `You get +${instantReward.toLocaleString()} Milk instantly, then +${adsBonusReward.toLocaleString()} more once they watch 10 ads!`;
+
+  // Tap card stats
+  document.getElementById('tapCoinsEarned').textContent = (currentUser.tap_count || 0).toLocaleString();
+
+  // Level bar (every 100 taps = 1 level)
+  const tapCount = currentUser.tap_count || 0;
+  const level = Math.floor(tapCount / 100) + 1;
+  const progress = tapCount % 100;
+  document.getElementById('levelLabel').textContent = `Level ${level}`;
+  document.getElementById('levelProgress').textContent = `${progress}/100 taps`;
+  document.getElementById('levelBarFill').style.width = `${progress}%`;
+
+  // Tasks summary (rough estimate: total earned minus tap earnings)
+  const taskEarned = Math.max(0, (currentUser.total_earned || 0) - tapCount);
+  document.getElementById('tasksEarnedTotal').textContent = taskEarned.toLocaleString();
+
+  // Ads watched progress
+  const adsWatched = currentUser.ads_watched || 0;
+  const adsToday = getTodayAdsWatched(currentUser);
+  const dailyLimit = appSettings.ads_daily_limit || 10;
+  const referralCount = currentUser.referral_count || 0;
+  document.getElementById('adsProgress').textContent = `Today: ${adsToday}/${dailyLimit}`;
+  document.getElementById('adRewardDisplay').textContent = '+' + (appSettings.ad_reward || 50);
+  document.getElementById('mainChannelRewardDisplay').textContent = '+' + (appSettings.channel_reward || 1000).toLocaleString() + ' 🥛';
+
+  // Daily task reward preview
+  const rewards = getDailyRewards();
+  const streakIdx = Math.min(currentUser.streak ?? 0, 6);
+  document.getElementById('dailyTaskReward').textContent = '+' + rewards[streakIdx];
+
+  // Channel task button state
+  if (currentUser.channel_joined) {
+    const btn = document.getElementById('task-channel-btn');
+    btn.textContent = '✅ Done';
+    btn.classList.add('done');
+    btn.disabled = true;
+  }
+  
+  // Render transactions
+  try {
+    const txns = await dbGet('transactions', `user_id=eq.${currentUser.id}&order=created_at.desc&limit=10`);
+    let html = '';
+    txns.forEach(t => {
+      const icon = t.type === 'earn' ? '➕' : t.type === 'info' ? '✅' : '⬆️';
+      const amountClass = t.type === 'info' ? 'plus' : (t.amount > 0 ? 'plus' : 'minus');
+      const amountDisplay = t.type === 'info' ? '' : `${t.amount > 0 ? '+' : ''}${t.amount}`;
+      html += `
+        <div class="tx-item">
+          <div class="tx-icon">${icon}</div>
+          <div class="tx-info">
+            <div class="tx-name">${t.description}</div>
+            <div class="tx-time">${new Date(t.created_at).toLocaleDateString()}</div>
+          </div>
+          <div class="tx-amount ${amountClass}">${amountDisplay}</div>
+        </div>
+      `;
+    });
+    document.getElementById('txList').innerHTML = html || '<div class="tx-empty"><span class="icon">🥛</span>No transactions yet.</div>';
+  } catch(e) {
+    console.error('Render transactions error:', e);
+  }
+}
+
+let nextTapAdAt = getRandomTapThreshold();
+function getRandomTapThreshold() {
+  return Math.floor(Math.random() * 11) + 20; // random between 20-30
+}
+
+// Returns the user's current usable tap energy, continuously regenerating over time
+// (not just a one-time full recharge after hitting 0). tap_energy_depleted_at is reused
+// as a "last checkpoint" timestamp from which partial regen is calculated.
+function getTapEnergyState(user) {
+  const maxEnergy = appSettings.tap_energy_max || 100;
+  const cooldownMs = (appSettings.tap_cooldown_minutes || 30) * 60 * 1000; // time to regen 0 -> max
+  const msPerPoint = cooldownMs / maxEnergy;
+
+  const storedEnergy = user.tap_energy != null ? user.tap_energy : maxEnergy;
+  const checkpoint = user.tap_energy_depleted_at ? new Date(user.tap_energy_depleted_at).getTime() : null;
+
+  if (storedEnergy >= maxEnergy || !checkpoint) {
+    return { energy: maxEnergy, rawEnergy: maxEnergy, checkpoint: null, maxEnergy, msPerPoint, full: true };
+  }
+
+  const elapsed = Date.now() - checkpoint;
+  const regenerated = elapsed / msPerPoint;
+  const rawEnergy = Math.min(maxEnergy, storedEnergy + regenerated);
+  const energy = Math.floor(rawEnergy);
+  const full = rawEnergy >= maxEnergy;
+  const msToNextPoint = full ? 0 : msPerPoint - ((rawEnergy - energy) * msPerPoint);
+
+  return { energy, rawEnergy, checkpoint: full ? null : checkpoint, maxEnergy, msPerPoint, msToNextPoint, full };
+}
+
+function updateTapEnergyDisplay() {
+  if (!currentUser) return;
+  const state = getTapEnergyState(currentUser);
+  const box = document.getElementById('tapEnergyStatus');
+  const btn = document.querySelector('.tap-btn');
+  if (!box) return;
+
+  // Only lock the value back into currentUser once fully regenerated (and clear the
+  // checkpoint then). Never write the rounded in-between value back with the old
+  // checkpoint still attached — that corrupts the baseline and double-counts elapsed
+  // time on the next calculation, which is what was causing energy to stall instead
+  // of climbing smoothly all the way from wherever it is up to max.
+  if (state.full && currentUser.tap_energy_depleted_at) {
+    currentUser.tap_energy = state.maxEnergy;
+    currentUser.tap_energy_depleted_at = null;
+  }
+
+  const tapDailyLimit = appSettings.tap_daily_limit || 500;
+  const tapsToday = getTodayTapsCount(currentUser);
+  const dailyCapHit = tapsToday >= tapDailyLimit;
+
+  box.textContent = dailyCapHit
+    ? `🚫 Daily limit reached (${tapDailyLimit}/${tapDailyLimit}) — resets tomorrow`
+    : `⚡ ${state.energy}/${state.maxEnergy} taps left`;
+  if (btn) btn.disabled = dailyCapHit || (state.energy <= 0 && !state.full);
+}
+
+async function tapMilk(e) {
+  if (!currentUser) return;
+
+  const tapDailyLimit = appSettings.tap_daily_limit || 500;
+  const today = new Date().toDateString();
+  let tapsToday = getTodayTapsCount(currentUser);
+  if (tapsToday >= tapDailyLimit) {
+    showToast(`🚫 Daily tap limit reached (${tapDailyLimit}). Try again tomorrow!`);
+    return;
+  }
+
+  const state = getTapEnergyState(currentUser);
+  if (state.full) {
+    currentUser.tap_energy = state.maxEnergy;
+    currentUser.tap_energy_depleted_at = null;
+  }
+  if (state.energy <= 0 && !state.full) {
+    updateTapEnergyDisplay();
+    showToast(`⏳ Out of taps! Recharging...`);
+    return;
+  }
+
+  // Optimistic local update — instant feedback. The network write happens in the
+  // background, batched (see queueTapSync), so rapid tapping never waits on it.
+  currentUser.balance += 1;
+  currentUser.total_earned += 1;
+  currentUser.tap_count = (currentUser.tap_count || 0) + 1;
+  currentUser.taps_today = tapsToday + 1;
+  currentUser.last_tap_date = today;
+  const newEnergy = state.energy - 1;
+  currentUser.tap_energy = newEnergy;
+  currentUser.tap_energy_depleted_at = newEnergy < state.maxEnergy ? new Date().toISOString() : null;
+
+  if (currentUser.taps_today >= tapDailyLimit) {
+    showToast(`🚫 Daily tap limit reached (${tapDailyLimit}). Try again tomorrow!`);
+  }
+
+  createFloatingCoin(e);
+  updateTapUI();
+  updateTapEnergyDisplay();
+
+  const newTapCount = currentUser.tap_count;
+  if (newTapCount >= nextTapAdAt) {
+    nextTapAdAt = newTapCount + getRandomTapThreshold();
+    if (typeof show_11250385 === 'function') {
+      show_11250385().catch(() => {}); // just show the ad, no reward tied to this one
+    }
+  }
+
+  queueTapSync();
+}
+
+// Lightweight, network-free UI refresh for the numbers that change on every tap.
+// (renderUI() also re-fetches the transaction history from the server on every call —
+// running that on every single tap is what was making rapid tapping feel slow.)
+function updateTapUI() {
+  if (!currentUser) return;
+  document.getElementById('mainBalance').textContent = currentUser.balance.toLocaleString();
+  document.getElementById('walletBalance').innerHTML = `${(currentUser.balance || 0).toLocaleString()} <span style="font-size:14px;color:var(--muted)">Milk</span>`;
+  document.getElementById('tapCountDisplay').textContent = (currentUser.tap_count || 0).toLocaleString();
+  document.getElementById('tapCoinsEarned').textContent = (currentUser.tap_count || 0).toLocaleString();
+  const tapCount = currentUser.tap_count || 0;
+  const level = Math.floor(tapCount / 100) + 1;
+  const progress = tapCount % 100;
+  document.getElementById('levelLabel').textContent = `Level ${level}`;
+  document.getElementById('levelProgress').textContent = `${progress}/100 taps`;
+  document.getElementById('levelBarFill').style.width = `${progress}%`;
+}
+
+// --- Batched network sync for taps ---
+// Instead of firing a DB update + transaction insert for every single tap (2 network
+// round-trips each), we accumulate taps locally and sync them in one shot after a short
+// pause, or once the batch gets large. A burst of 20 rapid taps now costs 1 round-trip
+// instead of 40.
+let pendingTapCount = 0;
+let tapSyncTimer = null;
+const TAP_SYNC_DEBOUNCE_MS = 700;
+const TAP_SYNC_BATCH_SIZE = 15;
+
+function queueTapSync() {
+  pendingTapCount++;
+  if (tapSyncTimer) clearTimeout(tapSyncTimer);
+  if (pendingTapCount >= TAP_SYNC_BATCH_SIZE) {
+    flushTapSync();
+  } else {
+    tapSyncTimer = setTimeout(flushTapSync, TAP_SYNC_DEBOUNCE_MS);
+  }
+}
+
+async function flushTapSync() {
+  if (tapSyncTimer) { clearTimeout(tapSyncTimer); tapSyncTimer = null; }
+  const taps = pendingTapCount;
+  if (taps <= 0 || !currentUser) return;
+  pendingTapCount = 0;
+
+  try {
+    // Server recomputes energy/cooldown/daily-limit from the DB row and only
+    // credits what's actually allowed - the client's optimistic local numbers
+    // are just for instant UI feedback, never trusted as the source of truth.
+    const { user, applied } = await apiUser('/api/user/tap', { count: taps });
+    currentUser.balance = user.balance;
+    currentUser.total_earned = user.total_earned;
+    currentUser.tap_count = user.tap_count;
+    currentUser.tap_energy = user.tap_energy;
+    currentUser.tap_energy_depleted_at = user.tap_energy_depleted_at;
+    currentUser.taps_today = user.taps_today;
+    currentUser.last_tap_date = user.last_tap_date;
+    if (applied < taps) {
+      // Server capped it (energy ran out / daily limit hit mid-batch) -
+      // reconcile the UI so it isn't showing more than was actually credited.
+      updateTapUI();
+      updateTapEnergyDisplay();
+    }
+  } catch(e) {
+    console.error('Tap sync error:', e);
+    pendingTapCount += taps; // retry these on the next flush instead of losing them
+  }
+}
+
+// Best-effort flush so a quick burst of taps isn't lost if the user leaves the page
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && pendingTapCount > 0) flushTapSync();
+});
+window.addEventListener('pagehide', () => { if (pendingTapCount > 0) flushTapSync(); });
+
+// Keep the cooldown countdown fresh even if the user just waits on the Home screen
+setInterval(() => { if (currentUser) updateTapEnergyDisplay(); }, 1000);
+
+function createFloatingCoin(e) {
+  const coin = document.createElement('div');
+  coin.className = 'float-coin';
+  coin.textContent = '+1';
+  coin.style.left = (e?.clientX || window.innerWidth/2) + 'px';
+  coin.style.top = (e?.clientY || window.innerHeight/2) + 'px';
+  document.body.appendChild(coin);
+  setTimeout(() => coin.remove(), 1000);
+}
+
+let channelJoinClicked = false;
+let pendingVerify = new Set();
+
+async function checkChannelMembership(userId, channelUsername) {
+  // Calls our own backend, which holds the bot token server-side and checks
+  // membership via Telegram Bot API - the token never touches the client.
+  const chat = channelUsername || CHANNEL;
+  const url = `${BACKEND_URL}/api/check-membership?chat=${encodeURIComponent(chat)}&user_id=${encodeURIComponent(userId)}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    return !!data.joined;
+  } catch (e) {
+    console.error('Membership check failed', e);
+    return false;
+  }
+}
+
+async function joinChannel() {
+  if (currentUser.channel_joined) { showToast('Already joined!'); return; }
+
+  const btn = document.getElementById('task-channel-btn');
+  const hint = document.getElementById('task-channel-hint');
+
+  if (!channelJoinClicked) {
+    // Step 1: open the channel, ask user to actually join
+    const link = `https://t.me/${CHANNEL.replace('@','')}`;
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      Telegram.WebApp.openTelegramLink(link);
+    } else {
+      window.open(link, '_blank');
+    }
+    channelJoinClicked = true;
+    btn.textContent = 'Verify';
+    if (hint) hint.style.display = 'block';
+    return;
+  }
+
+  // Step 2: verify membership before granting reward
+  btn.disabled = true;
+  btn.textContent = 'Checking...';
+  const isMember = await checkChannelMembership(currentUser.id);
+  btn.disabled = false;
+
+  if (!isMember) {
+    btn.textContent = 'Verify';
+    showToast('❌ You haven\'t joined the channel yet');
+    return;
+  }
+
+  try {
+    const { reward, user } = await apiUser('/api/user/channel-reward', { chat: CHANNEL });
+    currentUser.balance = user.balance;
+    currentUser.total_earned = user.total_earned;
+    currentUser.channel_joined = true;
+    if (hint) hint.style.display = 'none';
+    await renderUI();
+    showToast(`🎉 +${reward.toLocaleString()} Milk!`);
+  } catch (e) {
+    console.error('Channel reward error:', e);
+    showToast('❌ Could not verify membership, try again');
+  }
+}
+
+async function watchAd() {
+  const today = new Date().toDateString();
+  if (currentUser.last_ad_date !== today) {
+    currentUser.ads_watched_today = 0;
+    currentUser.last_ad_date = today;
+  }
+  const limit = appSettings.ads_daily_limit || 10;
+  if ((currentUser.ads_watched_today || 0) >= limit) {
+    showToast(`⏰ Daily ad limit reached (${limit}/day). Come back tomorrow!`);
+    return;
+  }
+
+  const btn = document.getElementById('watchAdBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  try {
+    await show_11250385(); // rewarded interstitial — resolves only if the ad was actually watched
+
+    // Everything from here - daily-limit check, reward amount, the counters,
+    // and the one-time referral ads-milestone bonus - is decided and applied
+    // server-side in a single call. The client can no longer just PATCH its
+    // own ads_watched/balance fields.
+    const { reward, user } = await apiUser('/api/user/ad-reward', {});
+    currentUser.ads_watched = user.ads_watched;
+    currentUser.ads_watched_today = user.ads_watched_today;
+    currentUser.last_ad_date = user.last_ad_date;
+    currentUser.referral_bonus_paid = user.referral_bonus_paid;
+    currentUser.balance = user.balance;
+    currentUser.total_earned = user.total_earned;
+    await renderUI();
+    showToast(`🎉 +${reward.toLocaleString()} Milk!`);
+  } catch (e) {
+    console.error('Ad reward error:', e);
+    showToast('❌ Ad was not completed, no reward');
+  } finally {
+    btn.textContent = 'Watch';
+    btn.disabled = false;
+  }
+}
+
+// ===== GRAM EXCHANGE (Withdraw) =====
+
+// Config for each withdrawal method: unit label, address field label/placeholder, and min chars for the identifier.
+const WITHDRAW_METHODS = {
+  GRAM: {
+    unit: 'GRAM',
+    label: '💎 Your TON Wallet Address (GRAM)',
+    placeholder: 'Enter your TON wallet address',
+    minLen: 5,
+  },
+  USDT_BEP20: {
+    unit: 'USDT',
+    label: '💵 Your USDT Address (BEP20 - BSC Network)',
+    placeholder: 'Enter your BEP20 (BSC) USDT address',
+    minLen: 5,
+  },
+  BINANCE_UID: {
+    unit: 'USDT',
+    label: '🅱️ Your Binance UID',
+    placeholder: 'Enter your Binance UID (Pay ID)',
+    minLen: 5,
+  },
+};
+
+let withdrawMethod = 'GRAM';
+
+function selectWithdrawMethod(method) {
+  withdrawMethod = method;
+  document.querySelectorAll('#withdrawMethodTabs .method-tab').forEach((btn) => {
+    const active = btn.dataset.method === method;
+    btn.classList.toggle('active', active);
+    btn.style.background = active ? 'var(--accent)' : 'transparent';
+    btn.style.color = active ? '#0f172a' : 'var(--fg)';
+  });
+  const cfg = WITHDRAW_METHODS[method];
+  document.getElementById('gramAddressLabel').textContent = cfg.label;
+  document.getElementById('gramAddress').placeholder = cfg.placeholder;
+  document.getElementById('gramAddress').value = '';
+  refreshExchangeUI();
+}
+
+function formatQuickAmountLabel(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
+  return String(n);
+}
+
+function openWithdrawModal() {
+  const minWithdrawal = appSettings.min_withdrawal_milk || MIN_EXCHANGE_MILK;
+  exchangeAmount = Math.min(minWithdrawal, currentUser.balance || 0) || minWithdrawal;
+  renderQuickAmountButtons(minWithdrawal);
+  selectWithdrawMethod('GRAM');
+  refreshExchangeUI();
+  document.getElementById('withdrawModal').classList.add('open');
+}
+
+// Quick-amount shortcut buttons scale with the admin-configured minimum withdrawal
+// (e.g. min=5000 -> 5K/25K/50K/MAX) instead of always showing the old hardcoded 10K/50K/100K.
+function renderQuickAmountButtons(minWithdrawal) {
+  const row = document.getElementById('quickAmountsRow');
+  if (!row) return;
+  const amounts = [minWithdrawal, minWithdrawal * 5, minWithdrawal * 10];
+  row.innerHTML = amounts.map(a => `<button onclick="setExchangeAmount(${a})">${formatQuickAmountLabel(a)}</button>`).join('')
+    + `<button onclick="setExchangeAmount('max')">MAX</button>`;
+}
+
+function setExchangeAmount(val) {
+  if (val === 'max') {
+    exchangeAmount = currentUser.balance || 0;
+  } else {
+    exchangeAmount = val;
+  }
+  refreshExchangeUI();
+}
+
+function refreshExchangeUI() {
+  const adsToday = getTodayAdsWatched(currentUser);
+  const referralCount = currentUser.referral_count || 0;
+  const adsRequired = getAdsRequiredForWithdrawal();
+  const referralsRequired = getReferralsRequiredForWithdrawal();
+  const subtitleParts = [];
+  if (adsRequired > 0) subtitleParts.push(`${adsRequired} Ads (Today)`);
+  if (referralsRequired > 0) subtitleParts.push(`${referralsRequired} Invites Required`);
+  const subtitleEl = document.getElementById('withdrawReqSubtitle');
+  if (subtitleEl) subtitleEl.textContent = subtitleParts.length ? subtitleParts.join(' + ') : 'No extra requirements';
+  const adsOk = !!currentUser.skip_ads_required || adsToday >= adsRequired;
+  const referralsOk = !!currentUser.skip_referral_required || referralCount >= referralsRequired;
+  const adsNeeded = Math.max(0, adsRequired - adsToday);
+  const referralsNeeded = Math.max(0, referralsRequired - referralCount);
+  const minWithdrawal = appSettings.min_withdrawal_milk || MIN_EXCHANGE_MILK;
+
+  document.getElementById('exchangeAmountDisplay').textContent = exchangeAmount.toLocaleString();
+  const cfg = WITHDRAW_METHODS[withdrawMethod];
+  const gram = (exchangeAmount / MILK_PER_GRAM);
+  document.getElementById('exchangeGramDisplay').textContent = `${gram.toFixed(2)} ${cfg.unit}`;
+  document.getElementById('exchangeRateSubLabel').textContent = `${exchangeAmount.toLocaleString()} Milk = ${gram.toFixed(2)} ${cfg.unit}`;
+  const minGram = (minWithdrawal / MILK_PER_GRAM);
+  document.getElementById('exchangeMinLabel').textContent = `${minGram.toFixed(2)} ${cfg.unit} (${minWithdrawal.toLocaleString()} Milk)`;
+  const rateLabel = document.getElementById('exchangeRateInfoLabel');
+  if (rateLabel) rateLabel.textContent = `100,000 Milk = 1 ${cfg.unit}`;
+
+  const adsWarningBox = document.getElementById('adsWarningBox');
+  const adsWarningTitle = document.getElementById('adsWarningTitle');
+  const adsRequiredStatus = document.getElementById('adsRequiredStatus');
+  const referralsRequiredStatus = document.getElementById('referralsRequiredStatus');
+
+  adsRequiredStatus.textContent = adsOk ? '✅ Completed' : `❌ Need ${adsNeeded} more`;
+  adsRequiredStatus.classList.toggle('bad', !adsOk);
+  referralsRequiredStatus.textContent = referralsOk ? '✅ Completed' : `❌ Need ${referralsNeeded} more`;
+  referralsRequiredStatus.classList.toggle('bad', !referralsOk);
+
+  if (adsOk && referralsOk) {
+    adsWarningBox.style.display = 'none';
+  } else {
+    adsWarningBox.style.display = 'block';
+    const missing = [];
+    if (!adsOk) missing.push(`watch ${adsNeeded} more ad${adsNeeded === 1 ? '' : 's'} today`);
+    if (!referralsOk) missing.push(`invite ${referralsNeeded} more friend${referralsNeeded === 1 ? '' : 's'}`);
+    adsWarningTitle.textContent = missing.length ? `You need to ${missing.join(' and ')}!` : '';
+  }
+
+  const addr = document.getElementById('gramAddress').value.trim();
+  const validAmount = exchangeAmount >= minWithdrawal && exchangeAmount <= (currentUser.balance || 0);
+  const canSubmit = adsOk && referralsOk && validAmount && addr.length >= WITHDRAW_METHODS[withdrawMethod].minLen;
+  document.getElementById('exchangeSubmitBtn').disabled = !canSubmit;
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'gramAddress') refreshExchangeUI();
+});
+
+let exchangeSubmitting = false;
+async function confirmGramExchange() {
+  if (exchangeSubmitting) return; // prevent double-tap duplicate withdrawals in history
+  const adsToday = getTodayAdsWatched(currentUser);
+  const referralCount = currentUser.referral_count || 0;
+  const skipAds = !!currentUser.skip_ads_required;
+  const skipReferral = !!currentUser.skip_referral_required;
+  const addr = document.getElementById('gramAddress').value.trim();
+  const minWithdrawal = appSettings.min_withdrawal_milk || MIN_EXCHANGE_MILK;
+  const cfg = WITHDRAW_METHODS[withdrawMethod];
+
+  if (!skipAds && adsToday < getAdsRequiredForWithdrawal()) { showToast(`❌ Watch ${getAdsRequiredForWithdrawal() - adsToday} more ads today first!`); return; }
+  if (!skipReferral && referralCount < getReferralsRequiredForWithdrawal()) { showToast(`❌ Invite ${getReferralsRequiredForWithdrawal() - referralCount} more friend(s) first!`); return; }
+  if (exchangeAmount < minWithdrawal) { showToast(`Min ${minWithdrawal.toLocaleString()} Milk`); return; }
+  if (exchangeAmount > currentUser.balance) { showToast('Insufficient balance!'); return; }
+  if (!addr || addr.length < cfg.minLen) { showToast(`Invalid ${cfg.label.replace(/^\S+\s/, '')}!`); return; }
+
+  const gram = (exchangeAmount / MILK_PER_GRAM);
+
+  exchangeSubmitting = true;
+  const submitBtn = document.getElementById('exchangeSubmitBtn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Submitting...'; }
+
+  try {
+    // Server re-checks balance and the ads/referral requirements itself
+    // before creating the withdrawal and debiting balance - the UI checks
+    // above are just so the button looks disabled, they enforce nothing.
+    const { user } = await apiUser('/api/user/withdraw', {
+      amount: exchangeAmount,
+      wallet_address: addr,
+      method: withdrawMethod,
+    });
+    currentUser.balance = user.balance;
+    closeModal('withdrawModal');
+    document.getElementById('gramAddress').value = '';
+    await renderUI();
+    showToast(`✅ Withdrawal submitted! ${gram.toFixed(2)} ${cfg.unit} pending.`);
+  } catch (e) {
+    console.error('Withdraw error:', e);
+    showToast(`❌ ${e.message || 'Withdrawal failed'}`);
+  } finally {
+    exchangeSubmitting = false;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💎 Exchange & Withdraw'; }
+  }
+}
+
+function openDailyModal() {
+  const rewards = getDailyRewards();
+  const completedDays = currentUser.streak ?? 0; // number of consecutive days already claimed
+  const streak = Math.min(completedDays, 6);
+  const reward = rewards[streak];
+  document.getElementById('dailyRewardAmount').textContent = '+' + reward;
+  const today = new Date().toDateString();
+  const lastClaim = currentUser.last_claim ? new Date(currentUser.last_claim).toDateString() : null;
+  const claimed = lastClaim === today;
+  document.getElementById('dailyRewardLabel').textContent = claimed ? 'Already claimed today!' : 'Claim daily reward!';
+  document.getElementById('dailyClaimBtn').disabled = claimed;
+  document.getElementById('dailyClaimBtn').style.opacity = claimed ? '0.5' : '1';
+  
+  const el = document.getElementById('streakDays');
+  el.innerHTML = Array.from({length:7},(_,i) => {
+    const cls = i < completedDays ? 'done' : i === completedDays ? 'today' : '';
+    return `<div class="streak-day ${cls}">${i+1}</div>`;
+  }).join('');
+  document.getElementById('streakCount').textContent = completedDays;
+  document.getElementById('dailyModal').classList.add('open');
+}
+
+let dailyClaimSubmitting = false; // prevent double-tap duplicate entries in history
+async function claimDaily() {
+  if (dailyClaimSubmitting) return;
+
+  const today = new Date().toDateString();
+  const lastClaim = currentUser.last_claim ? new Date(currentUser.last_claim).toDateString() : null;
+  if (lastClaim === today) { showToast('Already claimed!'); return; }
+
+  dailyClaimSubmitting = true;
+  const claimBtn = document.getElementById('dailyClaimBtn');
+  if (claimBtn) { claimBtn.disabled = true; claimBtn.style.opacity = '0.5'; }
+
+  try {
+    // Server checks "already claimed today?" and computes the streak/reward
+    // itself, so replaying this request can't double-credit.
+    const { reward, user } = await apiUser('/api/user/daily-claim', {});
+    currentUser.balance = user.balance;
+    currentUser.total_earned = user.total_earned;
+    currentUser.streak = user.streak;
+    currentUser.last_claim = user.last_claim;
+
+    closeModal('dailyModal');
+    await renderUI();
+    showToast(`🎁 +${reward} Milk!`);
+  } catch(e) {
+    console.error('Claim daily error:', e);
+    showToast('❌ Error claiming reward');
+  } finally {
+    dailyClaimSubmitting = false;
+    if (claimBtn) { claimBtn.disabled = false; claimBtn.style.opacity = '1'; }
+  }
+}
+
+function copyRef() {
+  const link = document.getElementById('refLink').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(() => showToast('✅ Copied!'));
+  } else {
+    const el = document.createElement('textarea');
+    el.value = link;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('✅ Copied!');
+  }
+}
+
+function shareRef() {
+  const link = document.getElementById('refLink').textContent;
+  const text = encodeURIComponent('🥛 Join Milky Rush and earn free Milk! Tap, complete tasks and exchange for GRAM.');
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${text}`;
+  if (window.Telegram?.WebApp?.openTelegramLink) {
+    Telegram.WebApp.openTelegramLink(shareUrl);
+  } else {
+    window.open(shareUrl, '_blank');
+  }
+}
+
+// UTILS
+let lastNavAdTime = 0;
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+
+  // Make sure the Wallet's balance & transaction history reflect the latest taps,
+  // even if a batch hasn't synced to the server yet.
+  if (id === 'wallet') {
+    if (typeof flushTapSync === 'function' && pendingTapCount > 0) {
+      flushTapSync().then(() => renderUI());
+    } else {
+      renderUI();
+    }
+  }
+
+  // Occasional interstitial on tab switch (not tied to reward), max once per 45s
+  const now = Date.now();
+  if (typeof show_11250385 === 'function' && now - lastNavAdTime > 45000 && Math.random() < 0.35) {
+    lastNavAdTime = now;
+    show_11250385().catch(() => {});
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// =============================
+// ADMIN PANEL FUNCTIONS
+// =============================
+
+function openAdminPanel() {
+  document.getElementById('userApp').style.display = 'none';
+  document.getElementById('adminMode').classList.add('active');
+  loadAdminData();
+}
+
+function closeAdminPanel() {
+  document.getElementById('adminMode').classList.remove('active');
+  document.getElementById('userApp').style.display = 'block';
+}
+
+async function loadAdminData() {
+  try {
+    const users = await dbGetAll('users');
+    const txns = await dbGet('transactions', 'limit=50&order=created_at.desc');
+    const withdrawals = await dbGet('withdrawals');
+    
+    // DASHBOARD STATS
+    const totalEarned = users.reduce((s, u) => s + (u.total_earned || 0), 0);
+    const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending').length;
+    
+    document.getElementById('adminTotalUsers').textContent = users.length;
+    document.getElementById('adminTotalEarned').textContent = totalEarned.toLocaleString();
+    document.getElementById('adminPendingWithdrawals').textContent = pendingWithdrawals;
+    document.getElementById('adminActiveChannels').textContent = allChannels.length;
+    
+    // TRANSACTIONS
+    let txnHTML = '';
+    txns.slice(0, 20).forEach(t => {
+      txnHTML += `<tr>
+        <td>${t.type === 'earn' ? '➕' : '⬆️'}</td>
+        <td>${t.user_id}</td>
+        <td>${t.description.substring(0, 20)}</td>
+        <td style="color:${t.amount > 0 ? 'var(--green)' : 'var(--red)'}">${t.amount > 0 ? '+' : ''}${t.amount}</td>
+        <td>${new Date(t.created_at).toLocaleDateString()}</td>
+      </tr>`;
+    });
+    document.getElementById('adminTxnList').innerHTML = txnHTML;
+    
+    // CHANNELS
+    let channelHTML = '';
+    allChannels.forEach(c => {
+      channelHTML += `<tr>
+        <td>${c.icon || '📢'}</td>
+        <td>${escapeHtml(c.name)}</td>
+        <td>+${c.reward}</td>
+        <td>${escapeHtml(c.type)}</td>
+        <td>
+          <button class="admin-btn danger" style="font-size:11px;" onclick="deleteChannel(${c.id})">X</button>
+        </td>
+      </tr>`;
+    });
+    if (allChannels.length === 0) {
+      channelHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No channels</td></tr>';
+    }
+    document.getElementById('adminChannelsList').innerHTML = channelHTML;
+    
+    // USERS (cached for search/filter + bulk actions)
+    allUsersCache = users;
+    renderUsersTable();
+
+    // WITHDRAWALS
+    allWithdrawalsCache = withdrawals;
+    let withdrawalHTML = '';
+    const methodLabels = { GRAM: '💎 GRAM', USDT_BEP20: '💵 USDT (BEP20)', BINANCE_UID: '🅱️ Binance UID' };
+    withdrawals.forEach(w => {
+      withdrawalHTML += `<tr>
+        <td>${w.user_id}</td>
+        <td>${w.amount}</td>
+        <td>${methodLabels[w.method] || '💎 GRAM'}</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(w.wallet_address)}">${escapeHtml(w.wallet_address)}
+          <button class="row-actions btn-mini-blue" style="border:none;border-radius:6px;padding:3px 6px;cursor:pointer;margin-left:4px;" onclick="copyWithdrawAddressById(${w.id})">📋</button>
+        </td>
+        <td><span style="background:${w.status === 'pending' ? 'rgba(250,176,0,0.3)' : 'rgba(34,211,160,0.3)'};color:${w.status === 'pending' ? '#fab000' : 'var(--green)'};padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;">${w.status.toUpperCase()}</span></td>
+        <td>
+          ${w.status === 'pending' ? `
+            <button style="background:rgba(34,211,160,0.3);color:var(--green);border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:10px;margin-right:4px;" onclick="approveWithdrawal(${w.id})">OK</button>
+            <button style="background:rgba(244,63,94,0.3);color:var(--red);border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:10px;" onclick="rejectWithdrawal(${w.id})">X</button>
+          ` : '-'}
+        </td>
+      </tr>`;
+    });
+    document.getElementById('adminWithdrawalsList').innerHTML = withdrawalHTML;
+
+    // SETTINGS
+    document.getElementById('settingAdReward').value = appSettings.ad_reward;
+    document.getElementById('settingAdsDailyLimit').value = appSettings.ads_daily_limit;
+    document.getElementById('settingReferralInstant').value = appSettings.referral_instant_reward;
+    document.getElementById('settingReferralAdsBonus').value = appSettings.referral_ads_reward;
+    document.getElementById('settingMinWithdrawal').value = appSettings.min_withdrawal_milk;
+    document.getElementById('settingDailyRewardBase').value = appSettings.daily_reward_base;
+    document.getElementById('settingChannelReward').value = appSettings.channel_reward;
+    document.getElementById('settingTapEnergyMax').value = appSettings.tap_energy_max;
+    document.getElementById('settingTapCooldown').value = appSettings.tap_cooldown_minutes;
+    document.getElementById('settingTapDailyLimit').value = appSettings.tap_daily_limit;
+    document.getElementById('settingWithdrawAdsRequired').value = appSettings.withdrawal_ads_required;
+    document.getElementById('settingWithdrawAdsEnabled').checked = appSettings.withdrawal_ads_enabled !== false;
+    document.getElementById('settingWithdrawReferralsRequired').value = appSettings.withdrawal_referrals_required;
+    document.getElementById('settingWithdrawReferralsEnabled').checked = appSettings.withdrawal_referrals_enabled !== false;
+    
+  } catch(e) {
+    console.error('Admin load error:', e);
+    showToast('⚠️ Error loading admin data');
+  }
+}
+
+function renderUsersTable() {
+  const search = (document.getElementById('adminUserSearch')?.value || '').toLowerCase().trim();
+  const filtered = allUsersCache.filter(u => {
+    if (!search) return true;
+    return String(u.id).includes(search) || (u.first_name || '').toLowerCase().includes(search) || (u.username || '').toLowerCase().includes(search);
+  });
+  document.getElementById('adminUserCount').textContent = allUsersCache.length;
+
+  let userHTML = '';
+  filtered.forEach(u => {
+    const isBanned = !!u.banned;
+    const skipAds = !!u.skip_ads_required;
+    const skipRef = !!u.skip_referral_required;
+    userHTML += `<tr>
+      <td>${u.id}</td>
+      <td>${escapeHtml(u.first_name)}</td>
+      <td>${(u.balance || 0).toLocaleString()}</td>
+      <td>${(u.total_earned || 0).toLocaleString()}</td>
+      <td><span class="badge-status ${isBanned ? 'banned' : 'active'}">${isBanned ? 'BANNED' : 'ACTIVE'}</span></td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-mini-blue" onclick="openAdjustBalance(${u.id}, '${escapeHtml((u.first_name||'').replace(/'/g,""))}', ${u.balance || 0})">💰 Add/Sub</button>
+          <button class="${isBanned ? 'btn-mini-green' : 'btn-mini-red'}" onclick="toggleBan(${u.id}, ${isBanned})">${isBanned ? 'Unban' : 'Ban'}</button>
+          <button class="${skipAds ? 'btn-mini-green' : 'btn-mini-blue'}" title="Skip the 10-ads-today withdrawal requirement for this user" onclick="toggleSkipAds(${u.id}, ${skipAds})">${skipAds ? '✅ Ads Skip' : '🚫 Ads Skip'}</button>
+          <button class="${skipRef ? 'btn-mini-green' : 'btn-mini-blue'}" title="Skip the 3-invites withdrawal requirement for this user" onclick="toggleSkipReferral(${u.id}, ${skipRef})">${skipRef ? '✅ Ref Skip' : '🚫 Ref Skip'}</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+  if (filtered.length === 0) {
+    userHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No users found</td></tr>';
+  }
+  document.getElementById('adminUsersList').innerHTML = userHTML;
+}
+
+function copyWithdrawAddress(addr) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(addr).then(() => showToast('✅ Address copied!'));
+  } else {
+    showToast('✅ ' + addr);
+  }
+}
+
+// Safe wrapper for the withdrawals table button - only a numeric withdrawal ID
+// is ever embedded in the onclick attribute (never the raw user-typed address),
+// so a malicious wallet_address string can't break out of the HTML/JS context.
+function copyWithdrawAddressById(id) {
+  const w = allWithdrawalsCache.find(w => w.id === id);
+  if (w) copyWithdrawAddress(w.wallet_address);
+}
+
+function openAdjustBalance(userId, name, balance) {
+  adjustBalanceTargetId = userId;
+  document.getElementById('adjustBalanceUserLabel').textContent = `${name || 'User'} (ID: ${userId}) — Current: ${balance.toLocaleString()} Milk`;
+  document.getElementById('adjustBalanceAmount').value = '';
+  document.getElementById('adjustBalanceModal').classList.add('open');
+}
+
+let adjustBalanceSubmitting = false;
+async function submitAdjustBalance(direction) {
+  if (adjustBalanceSubmitting) return; // prevent double-tap duplicate entries in history
+  const rawAmount = parseInt(document.getElementById('adjustBalanceAmount').value);
+  if (!rawAmount || rawAmount <= 0) { showToast('❌ Enter a positive amount'); return; }
+  adjustBalanceSubmitting = true;
+  try {
+    await adminApi(`/api/admin/users/${adjustBalanceTargetId}/balance`, { direction, amount: rawAmount });
+    closeModal('adjustBalanceModal');
+    loadAdminData();
+    showToast('✅ Balance updated!');
+  } catch(e) {
+    console.error('Adjust balance error:', e);
+    showToast('❌ Error updating balance');
+  } finally {
+    adjustBalanceSubmitting = false;
+  }
+}
+
+async function toggleBan(userId, isCurrentlyBanned) {
+  const newState = !isCurrentlyBanned;
+  if (!confirm(newState ? 'Ban this user?' : 'Unban this user?')) return;
+  try {
+    await adminApi(`/api/admin/users/${userId}/ban`, { banned: newState });
+    loadAdminData();
+    showToast(newState ? '🚫 User banned' : '✅ User unbanned');
+  } catch(e) {
+    console.error('Toggle ban error:', e);
+    showToast('❌ Error updating ban status');
+  }
+}
+
+async function toggleSkipAds(userId, isCurrentlySkipped) {
+  const newState = !isCurrentlySkipped;
+  try {
+    await adminApi(`/api/admin/users/${userId}/skip-ads`, { skip: newState });
+    if (currentUser && currentUser.id === userId) currentUser.skip_ads_required = newState;
+    loadAdminData();
+    showToast(newState ? '✅ This user can withdraw without the 10-ads-today requirement' : '🚫 Ads requirement re-enabled for this user');
+  } catch(e) {
+    console.error('Toggle skip-ads error:', e);
+    showToast('❌ Error updating ads requirement');
+  }
+}
+
+async function toggleSkipReferral(userId, isCurrentlySkipped) {
+  const newState = !isCurrentlySkipped;
+  try {
+    await adminApi(`/api/admin/users/${userId}/skip-referral`, { skip: newState });
+    if (currentUser && currentUser.id === userId) currentUser.skip_referral_required = newState;
+    loadAdminData();
+    showToast(newState ? '✅ This user can withdraw without the 3-invites requirement' : '🚫 Invite requirement re-enabled for this user');
+  } catch(e) {
+    console.error('Toggle skip-referral error:', e);
+    showToast('❌ Error updating invite requirement');
+  }
+}
+
+let bulkAddSubmitting = false;
+async function bulkAddBalance() {
+  if (bulkAddSubmitting) return; // prevent double-tap duplicate entries in history
+  const amount = parseInt(document.getElementById('bulkBalanceAmount').value);
+  if (!amount) { showToast('❌ Enter a valid amount'); return; }
+  if (!confirm(`Add ${amount} Milk to ALL ${allUsersCache.length} users?`)) return;
+  bulkAddSubmitting = true;
+  showToast('⏳ Updating all users...');
+  try {
+    await adminApi('/api/admin/users/bulk-balance', { amount });
+    document.getElementById('bulkBalanceAmount').value = '';
+    loadAdminData();
+    showToast('✅ All users updated!');
+  } catch(e) {
+    console.error('Bulk add error:', e);
+    showToast('❌ Error during bulk update');
+  } finally {
+    bulkAddSubmitting = false;
+  }
+}
+
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.admin-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('admin-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+function toggleAddChannelForm() {
+  const form = document.getElementById('addChannelForm');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'none') {
+    document.getElementById('channelNameInput').value = '';
+    document.getElementById('channelRewardInput').value = '';
+  }
+}
+
+async function submitAddChannel() {
+  let name = document.getElementById('channelNameInput').value.trim();
+  const reward = parseInt(document.getElementById('channelRewardInput').value) || 0;
+
+  if (!name || reward <= 0) {
+    showToast('❌ Enter username and reward!');
+    return;
+  }
+  if (!name.startsWith('@')) name = '@' + name;
+
+  try {
+    await adminApi('/api/admin/channels', { name, description: 'Join our Telegram channel', reward, type: 'social', icon: '📢' });
+    await loadChannels();
+    toggleAddChannelForm();
+    loadAdminData();
+    showToast('✅ Task added!');
+  } catch(e) {
+    console.error('Add channel error:', e);
+    showToast('❌ Error adding task');
+  }
+}
+
+async function deleteChannel(id) {
+  if (!confirm('Delete this channel?')) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/admin/channels/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '' },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'failed');
+    allChannels = allChannels.filter(c => c.id !== id);
+    renderDynamicTasks();
+    loadAdminData();
+    showToast('✅ Deleted!');
+  } catch(e) {
+    console.error('Delete error:', e);
+    showToast('❌ Error deleting');
+  }
+}
+
+async function approveWithdrawal(id) {
+  try {
+    await adminApi(`/api/admin/withdrawals/${id}/approve`);
+    loadAdminData();
+    showToast('✅ Approved!');
+  } catch(e) {
+    console.error('Approve error:', e);
+    showToast('❌ Error approving');
+  }
+}
+
+async function rejectWithdrawal(id) {
+  try {
+    await adminApi(`/api/admin/withdrawals/${id}/reject`);
+    loadAdminData();
+    showToast('❌ Rejected!');
+  } catch(e) {
+    console.error('Reject error:', e);
+    showToast('❌ Error rejecting');
+  }
+}
+</script>
+
+</body>
+</html>
