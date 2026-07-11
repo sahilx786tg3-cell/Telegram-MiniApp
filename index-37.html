@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Milky Rush — Tap & Earn Milk</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="styles.css">
+<script src='//libtl.com/sdk.js' data-zone='11250385' data-sdk='show_11250385'></script>
+</head>
+<body>
+
+<!-- PREMIUM AMBIENT BACKGROUND (pure decoration, no interaction) -->
+<div class="bg-fx" aria-hidden="true">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+  <div class="bg-grain"></div>
+</div>
+
+<!-- LOADING SCREEN -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-orbit" aria-hidden="true"></div>
+  <div class="loading-logo" id="logoClick">🥛</div>
+  <div class="loading-text">Milky Rush</div>
+  <div class="loading-sub">Tap &amp; Earn Milk</div>
+  <div class="loading-bar">
+    <div class="loading-bar-fill"></div>
+  </div>
+</div>
+
+<!-- BANNED SCREEN -->
+<div class="banned-screen" id="bannedScreen">
+  <div class="icon">🚫</div>
+  <div class="title">You are banned</div>
+  <div class="sub">Your access to Milky Rush has been restricted by the admin.</div>
+</div>
+
+<!-- USER APP -->
+<div id="userApp" style="display:block;">
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="header">
+      <div class="header-top">
+        <div class="user-info">
+          <div class="avatar" id="avatarInitial">U</div>
+          <div>
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-level">🥛 Milk Collector</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+          <button class="daily-badge" id="dailyBadgeBtn" onclick="openDailyModal()">🎁 Daily</button>
+          <button class="daily-badge" id="spinBadgeBtn" onclick="openSpinModal()" style="background:#a855f7;color:#fff;white-space:nowrap;animation:none;">🎡 Spin<span id="spinBadgeCount"></span></button>
+        </div>
+      </div>
+      <div class="balance-label">TOTAL MILK BALANCE</div>
+      <div class="balance-amount" id="mainBalance">0</div>
+      <div class="stats-row">
+        <div class="stat-pill">
+          <div class="v" id="totalEarned">0</div>
+          <div class="l">Total Earned</div>
+        </div>
+        <div class="stat-pill">
+          <div class="v" id="tapCountDisplay">0</div>
+          <div class="l">Total Taps</div>
+        </div>
+        <div class="stat-pill">
+          <div class="v" id="streakDisplay">1</div>
+          <div class="l">Day Streak 🔥</div>
+        </div>
+      </div>
+      <div class="level-row">
+        <span id="levelLabel">Level 1</span>
+        <span id="levelProgress">0/100 taps</span>
+      </div>
+      <div class="level-bar-track">
+        <div class="level-bar-fill" id="levelBarFill" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <div class="section-title">TAP TO EARN MILK</div>
+    <div class="tap-card">
+      <div class="tap-btn-wrap">
+        <button class="tap-btn" onclick="tapMilk(event)">
+          🥛
+          <span class="tap-label">TAP!</span>
+        </button>
+      </div>
+      <div class="tap-stats">
+        <div class="tap-stat">
+          <div class="v" id="tapCoinsEarned">0</div>
+          <div class="l">Total Taps</div>
+        </div>
+        <div class="tap-stat">
+          <div class="v">+1</div>
+          <div class="l">Per Tap</div>
+        </div>
+      </div>
+      <div id="tapEnergyStatus" style="margin-top:12px;font-size:12px;color:var(--muted);">⚡ 100/100 taps left</div>
+    </div>
+
+    <div class="section-title">HOW TO EARN MORE MILK</div>
+    <div class="earn-card">
+      <div class="earn-row">
+        <span>👆</span>
+        <span>Tap the bottle — +1 Milk per tap</span>
+      </div>
+    </div>
+    <div class="earn-card">
+      <div class="earn-row">
+        <span>🎁</span>
+        <span>Claim daily reward — up to +500 Milk</span>
+      </div>
+    </div>
+    <div class="earn-card">
+      <div class="earn-row">
+        <span>📺</span>
+        <span>Watch video ads — +50 Milk each</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLET PAGE -->
+  <div class="page" id="page-wallet">
+    <div class="section-title" style="margin-top:16px;">WALLET</div>
+    <div class="wallet-card">
+      <div class="wallet-label">AVAILABLE MILK BALANCE</div>
+      <div class="wallet-amount" id="walletBalance">0 <span style="font-size:14px;color:var(--muted)">Milk</span></div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="wd-btn" style="flex:1;" onclick="openSwapModal()">🔄 Swap</button>
+        <button class="wd-btn" style="flex:1;" onclick="openHistoryModal()">🕐 History</button>
+      </div>
+    </div>
+
+    <div class="token-list">
+      <div class="token-row" onclick="openWithdrawModal('GRAM')" style="cursor:pointer;">
+        <div class="token-icon icon-gram"></div>
+        <div class="token-info">
+          <div class="token-name">GRAM</div>
+          <div class="token-sub" id="gramBalanceSub">0 GRAM</div>
+        </div>
+        <div class="token-value" id="gramBalance">0</div>
+      </div>
+      <div class="token-row" onclick="openWithdrawModal('USDT_BEP20')" style="cursor:pointer;">
+        <div class="token-icon icon-usdt"></div>
+        <div class="token-info">
+          <div class="token-name">USDT</div>
+          <div class="token-sub" id="usdtBalanceSub">0 USDT</div>
+        </div>
+        <div class="token-value" id="usdtBalance">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY MODAL -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🕐 Milk Transaction History</div>
+      <div id="txList"></div>
+      <button class="btn-modal text-only" onclick="closeModal('historyModal')">Close</button>
+    </div>
+  </div>
+
+  <!-- TASKS PAGE -->
+  <div class="page" id="page-tasks">
+    <div style="padding-top:16px;">
+      <div class="task-summary-card">
+        <div class="icon">🥛</div>
+        <div class="title">Earn Milk Coins</div>
+        <div class="sub">Complete tasks to earn free Milk!</div>
+        <div class="task-summary-box">
+          <div class="v" id="tasksEarnedTotal">0</div>
+          <div class="l">Milk earned from tasks</div>
+        </div>
+      </div>
+
+      <div class="task-section-title">🥛 CHANNEL TASKS</div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">📢</div>
+          <div>
+            <div class="task-name">Join @MilkRushOfficial</div>
+            <div class="task-desc">Join our official Telegram channel</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="mainChannelRewardDisplay">+1,000 🥛</div>
+          <button class="task-btn" id="task-channel-btn" onclick="joinChannel()">Join</button>
+          <div class="task-hint" id="task-channel-hint" style="display:none;font-size:11px;color:#8fa3b8;margin-top:4px;">Tap again after joining</div>
+        </div>
+      </div>
+      <div id="dynamicChannelTasks"></div>
+
+      <div class="task-section-title">🎯 DAILY TASKS</div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">🎁</div>
+          <div>
+            <div class="task-name">Claim Daily Milk</div>
+            <div class="task-desc">Claim your daily bonus Milk</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="dailyTaskReward">+100</div>
+          <button class="task-btn" id="dailyTaskClaimBtn" onclick="openDailyModal()">Claim</button>
+        </div>
+      </div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">🤝</div>
+          <div>
+            <div class="task-name">Invite a Friend</div>
+            <div class="task-desc">Share your referral link</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="inviteTaskReward">+500</div>
+          <button class="task-btn" onclick="showPage('referral', document.querySelectorAll('.nav-btn')[3])">Invite</button>
+        </div>
+      </div>
+
+      <div class="task-section-title">📺 WATCH &amp; EARN</div>
+      <div class="task-card">
+        <div class="task-left">
+          <div class="task-icon">▶️</div>
+          <div>
+            <div class="task-name">Watch Video Ad</div>
+            <div class="task-desc">Watch a short ad to earn Milk</div>
+            <div class="task-progress" id="adsProgress">0/10 watched</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <div class="task-reward" id="adRewardDisplay">+50</div>
+          <button class="task-btn" id="watchAdBtn" onclick="watchAd()">Watch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERRAL PAGE -->
+  <div class="page" id="page-referral">
+    <div style="padding-top:16px;">
+      <div class="ref-card">
+        <div class="ref-icon">🤝</div>
+        <div class="ref-title">Invite &amp; Earn Milk</div>
+        <div class="ref-desc" id="refDescText">Get 150 Milk per friend — 50 instantly + 100 more when they watch 10 ads!</div>
+        <div class="ref-bonus" id="earnedBonus">0</div>
+        <div class="ref-bonus-label">Milk earned from referrals</div>
+        <div class="ref-link-box">
+          <div class="ref-link" id="refLink">Loading...</div>
+          <button class="copy-btn" onclick="copyRef()">Copy</button>
+        </div>
+        <button class="share-btn" onclick="shareRef()">🚀 Share on Telegram</button>
+        <div class="ref-stats">
+          <div class="ref-stat">
+            <div class="v" id="refCount">0</div>
+            <div class="l">Friends Invited</div>
+          </div>
+          <div class="ref-stat">
+            <div class="v" id="refEarnedStat">0</div>
+            <div class="l">Milk Earned</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">HOW IT WORKS</div>
+      <div class="steps-card">
+        <div class="step-row"><div class="step-num">1</div><div>Copy your MilkRush referral link</div></div>
+        <div class="step-row"><div class="step-num">2</div><div>Share with friends on Telegram/WhatsApp</div></div>
+        <div class="step-row"><div class="step-num">3</div><div>Friend joins MilkRush via your link</div></div>
+        <div class="step-row"><div class="step-num">4</div><div id="refStep4Text">You get +50 Milk instantly, then +100 more once they watch 10 ads!</div></div>
+        <div class="step-row"><div class="step-num">5</div><div>Once your friend watches 10 ads, you automatically get the remaining bonus</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div class="nav">
+    <button class="nav-btn active" onclick="showPage('home',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('wallet',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+      <span>Wallet</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('tasks',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+      <span>Tasks</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('referral',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Referral</span>
+    </button>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="dailyModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🎁 Daily Reward</div>
+      <div class="modal-desc" id="dailyRewardLabel">Claim your Milk reward!</div>
+      <div class="amount-display">
+        <div class="label">You'll get</div>
+        <div class="value" id="dailyRewardAmount">+100</div>
+      </div>
+      <div class="section-title">7-DAY STREAK</div>
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;" id="streakDays"></div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px;">
+        Current Streak: <strong id="streakCount">1</strong> days 🔥
+      </div>
+      <button class="btn-modal primary" id="dailyClaimBtn" onclick="claimDaily()">CLAIM REWARD</button>
+      <button class="btn-modal secondary" onclick="closeModal('dailyModal')">LATER</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="spinModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🎡 Spin Wheel</div>
+      <div class="modal-desc" id="spinDescLabel">Spin to win Milk, GRAM, or USDT!</div>
+      <div style="display:flex;justify-content:center;margin:24px 0 16px;position:relative;">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:28px;z-index:2;">🔻</div>
+        <div id="spinWheel" style="width:260px;height:260px;border-radius:50%;position:relative;transition:transform 4.2s cubic-bezier(0.12,0.67,0.1,0.99);border:6px solid #1e293b;box-shadow:0 0 0 2px #a855f7;"></div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:16px;" id="spinAvailableLabel">0 spins available</div>
+      <button class="btn-modal primary" id="spinNowBtn" onclick="spinNow()" style="background:#a855f7;">SPIN NOW</button>
+      <button class="btn-modal secondary" onclick="closeModal('spinModal')">LATER</button>
+    </div>
+  </div>
+
+  <!-- GRAM EXCHANGE MODAL -->
+  <div class="modal-overlay" id="withdrawModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">💎 Withdraw</div>
+      <div class="modal-desc" id="withdrawReqSubtitle">10 Ads (Today) + 3 Invites Required</div>
+
+      <div class="method-tabs" id="withdrawMethodTabs" style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="method-tab active" data-method="GRAM" data-unit="GRAM" onclick="selectWithdrawMethod('GRAM')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);background:var(--accent);color:#181029;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;">💎 GRAM</button>
+        <button class="method-tab" data-method="USDT_BEP20" data-unit="USDT" onclick="selectWithdrawMethod('USDT_BEP20')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--fg);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;">💵 USDT (BEP20)</button>
+        <button class="method-tab" data-method="BINANCE_UID" data-unit="USDT" onclick="selectWithdrawMethod('BINANCE_UID')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--fg);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;">🅱️ Binance UID</button>
+      </div>
+
+      <div class="ads-warning" id="adsWarningBox">
+        <div class="icon">📺</div>
+        <div class="title" id="adsWarningTitle">Watch 10 more ads first!</div>
+        <div class="sub">Go to Tasks → Watch Video Ads, and invite friends from the Referral tab</div>
+      </div>
+
+      <div class="amount-display">
+        <div class="label" id="exchangeBalanceLabel" style="margin-bottom:8px;">Available: 0 GRAM</div>
+        <input class="value" id="exchangeAmountDisplay" type="number" inputmode="decimal" step="0.0001" min="0" value="0.1" oninput="onExchangeAmountTyped(this.value)" style="background:transparent;border:none;outline:none;padding:0;width:100%;text-align:center;">
+        <div class="label" style="margin-top:8px;margin-bottom:0;" id="exchangeUnitLabel">GRAM to withdraw</div>
+      </div>
+
+      <div class="quick-amounts" id="quickAmountsRow">
+        <!-- populated dynamically by renderQuickAmountButtons() based on admin-configured minimum -->
+      </div>
+
+      <div class="input-group">
+        <label id="gramAddressLabel">💎 Your TON Wallet Address (GRAM)</label>
+        <input type="text" id="gramAddress" placeholder="Enter your TON wallet address">
+      </div>
+
+      <div class="info-rows">
+        <div class="info-row"><span class="l">Minimum</span><span class="v" id="exchangeMinLabel">0.1 GRAM</span></div>
+        <div class="info-row"><span class="l">Ads Required (Today)</span><span class="v" id="adsRequiredStatus">❌ Need 10 more</span></div>
+        <div class="info-row"><span class="l">Invites Required</span><span class="v" id="referralsRequiredStatus">❌ Need 3 more</span></div>
+      </div>
+
+      <button class="btn-modal primary" id="exchangeSubmitBtn" onclick="confirmGramExchange()">💎 Withdraw</button>
+      <button class="btn-modal text-only" onclick="closeModal('withdrawModal')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- SWAP MODAL -->
+  <div class="modal-overlay" id="swapModal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🔄 Swap</div>
+      <div class="modal-desc">Convert your Milk balance into GRAM or USDT instantly</div>
+
+      <div class="swap-stack">
+        <div class="swap-row-box">
+          <div class="top-line"><span>Send</span><span>Balance: <span id="swapMilkBalanceLabel">0</span> <span class="link" onclick="setSwapAmount('max')">MAX</span></span></div>
+          <div class="amount-line">
+            <input class="swap-amount-big" id="swapAmountDisplay" type="number" inputmode="numeric" min="0" step="1" value="10000" oninput="onSwapAmountTyped(this.value)" style="background:transparent;border:none;outline:none;padding:0;width:100%;">
+            <div class="swap-token-badge"><div class="token-icon" style="width:20px;height:20px;font-size:11px;background:#334155;">🥛</div> MILK</div>
+          </div>
+        </div>
+        <div class="swap-arrow-divider"><div class="swap-arrow-btn">↓↑</div></div>
+        <div class="swap-row-box">
+          <div class="top-line"><span>Receive</span></div>
+          <div class="amount-line">
+            <div class="swap-amount-big" id="swapResultDisplay">0.10</div>
+            <div class="swap-token-badge selectable" onclick="toggleSwapTarget()">
+              <div class="token-icon icon-gram" id="swapTargetIcon"></div> <span id="swapTargetLabel">GRAM</span> <span style="font-size:10px;">⌄</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-amounts" id="swapQuickAmountsRow">
+        <button onclick="setSwapAmount(10000)">10K</button>
+        <button onclick="setSwapAmount(50000)">50K</button>
+        <button onclick="setSwapAmount(100000)">100K</button>
+        <button onclick="setSwapAmount('max')">MAX</button>
+      </div>
+
+      <div class="info-rows">
+        <div class="info-row"><span class="l">Exchange Rate</span><span class="v" id="swapRateInfoLabel">100,000 Milk = 1 GRAM</span></div>
+      </div>
+
+      <button class="btn-modal primary" id="swapSubmitBtn" onclick="confirmSwap()">🔄 Swap Now</button>
+      <button class="btn-modal text-only" onclick="closeModal('swapModal')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- ADMIN PANEL (HIDDEN) -->
+<div class="admin-mode" id="adminMode">
+  <div class="admin-header">
+    <div class="admin-title">🔒 Admin Panel</div>
+    <button class="admin-close" onclick="closeAdminPanel()">❌ CLOSE</button>
+  </div>
+  
+  <div class="admin-content">
+    <div class="admin-nav">
+      <button class="admin-nav-btn active" onclick="switchAdminTab('dashboard',this)">📊 Dashboard</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('transactions',this)">💳 Transactions</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('channels',this)">📢 Channels</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('users',this)">👥 Users</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('withdrawals',this)">⬆️ Withdrawals</button>
+      <button class="admin-nav-btn" onclick="switchAdminTab('settings',this)">⚙️ Settings</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="admin-section active" id="admin-dashboard">
+      <h3 style="margin-bottom:12px;font-size:16px;">📊 Stats</h3>
+      <div class="admin-grid">
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Total Users</div>
+          <div class="admin-stat-value" id="adminTotalUsers">0</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Total Earned</div>
+          <div class="admin-stat-value" id="adminTotalEarned">0</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Withdrawals</div>
+          <div class="admin-stat-value" id="adminPendingWithdrawals">0</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-label">Channels</div>
+          <div class="admin-stat-value" id="adminActiveChannels">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="admin-section" id="admin-transactions">
+      <h3 style="margin-bottom:12px;font-size:16px;">💳 Recent Transactions</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>User</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="adminTxnList">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CHANNELS -->
+    <div class="admin-section" id="admin-channels">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;">📢 Channels</h3>
+        <button class="admin-btn" onclick="toggleAddChannelForm()">➕ Add</button>
+      </div>
+      
+      <div id="addChannelForm" class="admin-form" style="display:none;">
+        <h4 style="margin-bottom:10px;font-size:14px;">New Task</h4>
+        <div class="input-group">
+          <label>Channel Username (e.g. @MyChannel)</label>
+          <input type="text" id="channelNameInput" placeholder="@MyChannel">
+        </div>
+        <div class="input-group">
+          <label>Reward (Milk)</label>
+          <input type="number" id="channelRewardInput" placeholder="e.g., 1000">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-modal primary" style="flex:1;" onclick="submitAddChannel()">Create</button>
+          <button class="btn-modal secondary" style="flex:1;" onclick="toggleAddChannelForm()">Cancel</button>
+        </div>
+      </div>
+
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Icon</th>
+            <th>Name</th>
+            <th>Reward</th>
+            <th>Type</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminChannelsList">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- USERS -->
+    <div class="admin-section" id="admin-users">
+      <h3 style="margin-bottom:4px;font-size:16px;">👥 Users (<span id="adminUserCount">0</span>)</h3>
+      <input type="text" class="admin-search" id="adminUserSearch" placeholder="🔍 Search by name or ID..." oninput="renderUsersTable()">
+      <div class="admin-bulk-row">
+        <input type="number" id="bulkBalanceAmount" placeholder="Amount to add to ALL users (e.g. 100)">
+        <button class="admin-btn" onclick="bulkAddBalance()">➕ Add To All</button>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Name</th>
+            <th>Balance</th>
+            <th>GRAM</th>
+            <th>USDT</th>
+            <th>Earned</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersList">
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- WITHDRAWALS -->
+    <div class="admin-section" id="admin-withdrawals">
+      <h3 style="margin-bottom:12px;font-size:16px;">⬆️ Withdrawals</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Address / UID</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminWithdrawalsList">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="admin-section" id="admin-settings">
+      <h3 style="margin-bottom:12px;font-size:16px;">⚙️ Bot Settings</h3>
+      <div class="admin-form">
+        <div class="input-group">
+          <label>Milk Reward Per Ad Watch</label>
+          <input type="number" id="settingAdReward" placeholder="e.g. 50">
+        </div>
+        <div class="input-group">
+          <label>Daily Ad Watch Limit (per user, resets every day)</label>
+          <input type="number" id="settingAdsDailyLimit" placeholder="e.g. 10">
+        </div>
+        <div class="input-group">
+          <label>Referral Instant Reward (Milk — when friend opens bot)</label>
+          <input type="number" id="settingReferralInstant" placeholder="e.g. 50">
+        </div>
+        <div class="input-group">
+          <label>Referral Bonus Reward (Milk — when friend watches 10 ads)</label>
+          <input type="number" id="settingReferralAdsBonus" placeholder="e.g. 100">
+        </div>
+        <div class="input-group">
+          <label>Minimum Withdrawal — GRAM</label>
+          <input type="number" step="0.0001" id="settingMinWithdrawalGram" placeholder="e.g. 0.1">
+        </div>
+        <div class="input-group">
+          <label>Minimum Withdrawal — USDT</label>
+          <input type="number" step="0.0001" id="settingMinWithdrawalUsdt" placeholder="e.g. 0.1">
+        </div>
+        <div class="input-group">
+          <label>Minimum Swap — GRAM (Milk)</label>
+          <input type="number" id="settingMinSwapGram" placeholder="e.g. 10">
+        </div>
+        <div class="input-group">
+          <label>Minimum Swap — USDT (Milk)</label>
+          <input type="number" id="settingMinSwapUsdt" placeholder="e.g. 10">
+        </div>
+        <div class="input-group">
+          <label>🎡 Ads Required Per Extra Spin Credit</label>
+          <input type="number" id="settingSpinAdsRequired" placeholder="e.g. 5">
+        </div>
+        <div class="input-group">
+          <label>🎡 Spin Wheel Prizes</label>
+          <div id="spinPrizesBuilder"></div>
+          <button type="button" class="admin-btn" style="margin-top:8px;" onclick="addSpinPrizeRow()">➕ Add Prize</button>
+        </div>
+        <div class="input-group">
+          <label>Daily Check-in Reward (Day 1, Milk — other 6 days scale up automatically)</label>
+          <input type="number" id="settingDailyRewardBase" placeholder="e.g. 100">
+        </div>
+        <div class="input-group">
+          <label>Join @MilkRushOfficial Channel Reward (Milk)</label>
+          <input type="number" id="settingChannelReward" placeholder="e.g. 1000">
+        </div>
+        <div class="input-group">
+          <label>Free Taps Before Cooldown (per session)</label>
+          <input type="number" id="settingTapEnergyMax" placeholder="e.g. 100">
+        </div>
+        <div class="input-group">
+          <label>Tap Cooldown Duration (minutes, after using all free taps)</label>
+          <input type="number" id="settingTapCooldown" placeholder="e.g. 30">
+        </div>
+        <div class="input-group">
+          <label>Max Taps Per Day (per user, hard cap, resets at midnight)</label>
+          <input type="number" id="settingTapDailyLimit" placeholder="e.g. 500">
+        </div>
+        <div class="input-group">
+          <label>Withdrawal Requirement — Ads Watched Today</label>
+          <input type="number" id="settingWithdrawAdsRequired" placeholder="e.g. 10">
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:0;font-weight:400;">
+            <input type="checkbox" id="settingWithdrawAdsEnabled" style="width:16px;height:16px;">
+            Require this condition for withdrawal
+          </label>
+        </div>
+        <div class="input-group">
+          <label>Withdrawal Requirement — Friends Invited (total)</label>
+          <input type="number" id="settingWithdrawReferralsRequired" placeholder="e.g. 3">
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:0;font-weight:400;">
+            <input type="checkbox" id="settingWithdrawReferralsEnabled" style="width:16px;height:16px;">
+            Require this condition for withdrawal
+          </label>
+        </div>
+        <button class="btn-modal primary" onclick="saveSettings()">💾 Save Settings</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);padding:0 4px;">Changes apply instantly to all users on their next app load.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADJUST BALANCE MODAL -->
+<div class="modal-overlay" id="adjustBalanceModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💰 Adjust Balance</div>
+    <div class="modal-desc" id="adjustBalanceUserLabel">User</div>
+    <div class="input-group">
+      <label>Currency</label>
+      <select id="adjustBalanceCurrency" onchange="updateAdjustBalanceLabel()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border,#333);background:var(--input-bg,#1a1a1a);color:inherit;">
+        <option value="milk">🥛 Milk</option>
+        <option value="gram">💎 GRAM</option>
+        <option value="usdt">💵 USDT</option>
+      </select>
+    </div>
+    <div class="input-group">
+      <label id="adjustBalanceAmountLabel">Amount (Milk) — always positive, pick Add or Subtract below</label>
+      <input type="number" step="any" id="adjustBalanceAmount" placeholder="e.g. 500">
+    </div>
+    <div class="input-group">
+      <label>Reason (optional) — shown to the user instead of the default text</label>
+      <input type="text" id="adjustBalanceDescription" placeholder="e.g. Giveaway Reward" maxlength="100">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-modal primary" style="background:var(--green);flex:1;" onclick="submitAdjustBalance('add')">➕ Add</button>
+      <button class="btn-modal primary" style="background:var(--red);flex:1;" onclick="submitAdjustBalance('subtract')">➖ Subtract</button>
+    </div>
+    <button class="btn-modal secondary" onclick="closeModal('adjustBalanceModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- USER DETAILS MODAL -->
+<div class="modal-overlay" id="userDetailModal">
+  <div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="userDetailTitle">User Details</div>
+    <div class="admin-grid" style="margin-bottom:14px;">
+      <div class="admin-stat-box">
+        <div class="admin-stat-label">Balance</div>
+        <div class="admin-stat-value" id="userDetailBalance">0</div>
+      </div>
+      <div class="admin-stat-box">
+        <div class="admin-stat-label">Total Earned</div>
+        <div class="admin-stat-value" id="userDetailEarned">0</div>
+      </div>
+      <div class="admin-stat-box">
+        <div class="admin-stat-label">Taps</div>
+        <div class="admin-stat-value" id="userDetailTaps">0</div>
+      </div>
+      <div class="admin-stat-box">
+        <div class="admin-stat-label">Ads Watched</div>
+        <div class="admin-stat-value" id="userDetailAds">0</div>
+      </div>
+      <div class="admin-stat-box">
+        <div class="admin-stat-label">Referrals</div>
+        <div class="admin-stat-value" id="userDetailRefs">0</div>
+      </div>
+      <div class="admin-stat-box">
+        <div class="admin-stat-label">Streak</div>
+        <div class="admin-stat-value" id="userDetailStreak">0</div>
+      </div>
+    </div>
+    <h4 style="margin-bottom:10px;font-size:14px;">📜 Transaction History (<span id="userDetailTxnCount">0</span>)</h4>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Amount</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="userDetailTxnList">
+        <tr><td colspan="3" style="text-align:center;color:var(--muted);">Loading...</td></tr>
+      </tbody>
+    </table>
+    <button class="btn-modal secondary" onclick="closeModal('userDetailModal')" style="margin-top:14px;">Close</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
